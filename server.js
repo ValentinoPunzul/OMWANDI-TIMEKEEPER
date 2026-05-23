@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
@@ -9,7 +8,15 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Initialize Firebase Admin SDK
-const serviceAccount = require('./firebase-service-account.json');
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // In a deployed environment, parse the service account from the environment variable
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  // For local development, load the service account from a file
+  serviceAccount = require('./firebase-service-account.json');
+}
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: `https://omwandi-timekeeping-default-rtdb.firebaseio.com`
