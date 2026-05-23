@@ -1,5 +1,0 @@
-run:
-  command: node server.js
-  env:
-    - variable: FIREBASE_SERVICE_ACCOUNT
-      secret: firebase-service-account

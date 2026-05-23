@@ -9,14 +9,17 @@ const PORT = process.env.PORT || 8080;
 
 // Initialize Firebase Admin SDK
 let serviceAccount;
-const saEnvVar = process.env.FIREBASE_SERVICE_ACCOUNT || process.env.firebase_service_account;
+// Check all possible variations of the environment variable name
+const saEnvVar = process.env.FIREBASE_SERVICE_ACCOUNT || 
+                 process.env.firebase_service_account || 
+                 process.env['firebase-service-account'];
 
 if (saEnvVar) {
   try {
     serviceAccount = JSON.parse(saEnvVar);
     console.log('Firebase Service Account loaded from environment variable.');
   } catch (e) {
-    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable:', e.message);
+    console.error('Failed to parse Service Account environment variable. Ensure it is a valid JSON string.');
   }
 }
 
@@ -28,7 +31,7 @@ if (!serviceAccount) {
       console.log('Firebase Service Account loaded from local file.');
     }
   } catch (e) {
-    // Silent catch if file doesn't exist
+    // Local file not found, expected in production
   }
 }
 
@@ -40,108 +43,76 @@ if (serviceAccount) {
     });
     console.log('Firebase Admin SDK initialized successfully.');
   } catch (error) {
-    console.error('Failed to initialize Firebase Admin SDK:', error.message);
+    console.error('Firebase Initialization Error:', error.message);
   }
 } else {
-  console.warn('WARNING: No Firebase Service Account credentials found. Database features will not work.');
+  console.warn('WARNING: No Firebase Credentials found. App will run in demo mode with no database connection.');
 }
 
 const db = admin.apps.length ? admin.database() : null;
 
-// Enable CORS and JSON body parser
 app.use(cors());
 app.use(express.json());
-
-// Serve static assets from public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Ensure export directory exists
-const DATA_DIR = path.join(__dirname, 'data');
-const DISPATCH_DIR = path.join(DATA_DIR, 'hr_dispatched');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(DISPATCH_DIR)) fs.mkdirSync(DISPATCH_DIR, { recursive: true });
-
-// Utility to check if DB is initialized
+// Middleware to ensure DB is ready
 const checkDb = (req, res, next) => {
-    if (!db) return res.status(500).json({ error: 'Database not initialized' });
-    next();
+  if (!db) return res.status(503).json({ error: 'Database connection not established. Check server logs.' });
+  next();
 };
 
 // ============================================
 // API ROUTES
 // ============================================
 
-// 1. Employees APIs
+// 1. Employees
 app.get('/api/employees', checkDb, async (req, res) => {
   try {
     const snapshot = await db.ref('employees').once('value');
     res.json(Object.values(snapshot.val() || {}));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/employees', checkDb, async (req, res) => {
-  try {
-    const { name, role, color, avatar, reports_to, emp_no } = req.body;
-    if (!name || !role) return res.status(400).json({ error: 'Name and Role are required.' });
-    const id = 'emp_' + Date.now() + Math.random().toString(36).substr(2, 4);
-    const newEmployee = { id, name, role, color: color || '#6366f1', avatar: avatar || '??', reports_to: reports_to || null, emp_no: emp_no || null };
-    await db.ref('employees/' + id).set(newEmployee);
-    res.status(201).json(newEmployee);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const { name, role } = req.body;
+  if (!name || !role) return res.status(400).json({ error: 'Name and Role required' });
+  const id = req.body.id || 'emp_' + Date.now();
+  const emp = { ...req.body, id };
+  await db.ref('employees/' + id).set(emp);
+  res.status(201).json(emp);
 });
 
 app.put('/api/employees/:id', checkDb, async (req, res) => {
-  try {
-    await db.ref('employees/' + req.params.id).update(req.body);
-    res.json({ id: req.params.id, ...req.body });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  await db.ref('employees/' + req.params.id).update(req.body);
+  res.json({ id: req.params.id, ...req.body });
 });
 
 app.delete('/api/employees/:id', checkDb, async (req, res) => {
-  try {
-    await db.ref('employees/' + req.params.id).remove();
-    res.json({ success: true, id: req.params.id });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  await db.ref('employees/' + req.params.id).remove();
+  res.json({ success: true });
 });
 
-// 2. Projects APIs
+// 2. Projects
 app.get('/api/projects', checkDb, async (req, res) => {
   try {
     const snapshot = await db.ref('projects').once('value');
     res.json(Object.values(snapshot.val() || {}));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/projects', checkDb, async (req, res) => {
-  try {
-    const { name, client, budget_hours, color } = req.body;
-    if (!name) return res.status(400).json({ error: 'Project name is required.' });
-    const id = 'proj_' + Date.now() + Math.random().toString(36).substr(2, 4);
-    const newProject = { id, name, client: client || 'Internal', budget_hours: parseFloat(budget_hours) || 0.0, color: color || '#6366f1' };
-    await db.ref('projects/' + id).set(newProject);
-    res.status(201).json(newProject);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const id = req.body.id || 'proj_' + Date.now();
+  const proj = { ...req.body, id };
+  await db.ref('projects/' + id).set(proj);
+  res.status(201).json(proj);
 });
 
-// 3. Time Entries APIs
+// 3. Time Entries
 app.get('/api/entries', checkDb, async (req, res) => {
   try {
     const snapshot = await db.ref('time_entries').once('value');
     const entries = Object.values(snapshot.val() || {});
     
-    // Hydrate entries with names
     const empsSnap = await db.ref('employees').once('value');
     const projsSnap = await db.ref('projects').once('value');
     const emps = empsSnap.val() || {};
@@ -157,44 +128,33 @@ app.get('/api/entries', checkDb, async (req, res) => {
     }));
 
     res.json(hydrated.sort((a, b) => new Date(b.start_time) - new Date(a.start_time)));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/entries', checkDb, async (req, res) => {
-    try {
-        const { id, employee_id, project_id, task, description, start_time, end_time, total_hours } = req.body;
-        const entryId = id || db.ref('time_entries').push().key;
-        const newEntry = { id: entryId, employee_id, project_id, task, description: description || '', start_time, end_time: end_time || null, total_hours: parseFloat(total_hours) || 0 };
-        await db.ref('time_entries/' + entryId).set(newEntry);
-        res.status(201).json(newEntry);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  const id = req.body.id || db.ref('time_entries').push().key;
+  const entry = { ...req.body, id };
+  await db.ref('time_entries/' + id).set(entry);
+  res.status(201).json(entry);
+});
+
+app.delete('/api/entries/:id', checkDb, async (req, res) => {
+  await db.ref('time_entries/' + req.params.id).remove();
+  res.json({ success: true });
 });
 
 app.post('/api/sync', checkDb, async (req, res) => {
-    const { entries } = req.body;
-    if (!Array.isArray(entries)) return res.status(400).json({ error: 'Invalid entries' });
-    try {
-        const updates = {};
-        entries.forEach(e => { updates['/time_entries/' + (e.id || db.ref().push().key)] = e; });
-        await db.ref().update(updates);
-        res.json({ status: 'success', syncedCount: entries.length });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  const { entries } = req.body;
+  const updates = {};
+  entries.forEach(e => { updates['/time_entries/' + (e.id || db.ref().push().key)] = e; });
+  await db.ref().update(updates);
+  res.json({ status: 'success', syncedCount: entries.length });
 });
 
-// Handles default page routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start Server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n===========================================`);
-  console.log(`Chronos Flow Timekeeping Server running on port ${PORT}`);
-  console.log(`===========================================\n`);
+  console.log(`Chronos Flow running on port ${PORT}`);
 });
