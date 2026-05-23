@@ -1,4 +1,3 @@
-node_modules
-.oops
-error.log
-data/hr_dispatched/
+
+# Firebase service account key
+firebase-service-account.json
