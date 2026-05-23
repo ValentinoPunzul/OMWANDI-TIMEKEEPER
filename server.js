@@ -28,7 +28,7 @@ if (!serviceAccount) {
       console.log('Firebase Service Account loaded from local file.');
     }
   } catch (e) {
-    console.error('Failed to load local firebase-service-account.json:', e.message);
+    // Silent catch if file doesn't exist
   }
 }
 
@@ -36,11 +36,11 @@ if (serviceAccount) {
   try {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      databaseURL: `https://omwandi-timekeeping-default-rtdb.firebaseio.com`
+      databaseURL: "https://omwandi-timekeeping-default-rtdb.firebaseio.com"
     });
     console.log('Firebase Admin SDK initialized successfully.');
-  } catch (e) {
-    console.error('Failed to initialize Firebase Admin SDK:', e.message);
+  } catch (error) {
+    console.error('Failed to initialize Firebase Admin SDK:', error.message);
   }
 } else {
   console.warn('WARNING: No Firebase Service Account credentials found. Database features will not work.');
@@ -61,15 +61,15 @@ const DISPATCH_DIR = path.join(DATA_DIR, 'hr_dispatched');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(DISPATCH_DIR)) fs.mkdirSync(DISPATCH_DIR, { recursive: true });
 
-// ============================================
-// API ROUTES
-// ============================================
-
 // Utility to check if DB is initialized
 const checkDb = (req, res, next) => {
     if (!db) return res.status(500).json({ error: 'Database not initialized' });
     next();
 };
+
+// ============================================
+// API ROUTES
+// ============================================
 
 // 1. Employees APIs
 app.get('/api/employees', checkDb, async (req, res) => {
@@ -85,18 +85,8 @@ app.post('/api/employees', checkDb, async (req, res) => {
   try {
     const { name, role, color, avatar, reports_to, emp_no } = req.body;
     if (!name || !role) return res.status(400).json({ error: 'Name and Role are required.' });
-
     const id = 'emp_' + Date.now() + Math.random().toString(36).substr(2, 4);
-    const newEmployee = {
-      id,
-      name,
-      role,
-      color: color || '#' + Math.floor(Math.random() * 16777215).toString(16),
-      avatar: avatar || name.split(' ').map(n => n[0]).join('').toUpperCase().substr(0, 2),
-      reports_to: reports_to || null,
-      emp_no: emp_no || null
-    };
-
+    const newEmployee = { id, name, role, color: color || '#6366f1', avatar: avatar || '??', reports_to: reports_to || null, emp_no: emp_no || null };
     await db.ref('employees/' + id).set(newEmployee);
     res.status(201).json(newEmployee);
   } catch (error) {
@@ -104,9 +94,25 @@ app.post('/api/employees', checkDb, async (req, res) => {
   }
 });
 
-// ... [Remainder of the API routes from the previous server.js, updated to use checkDb middleware] ...
+app.put('/api/employees/:id', checkDb, async (req, res) => {
+  try {
+    await db.ref('employees/' + req.params.id).update(req.body);
+    res.json({ id: req.params.id, ...req.body });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-// Updated remaining routes for consistency
+app.delete('/api/employees/:id', checkDb, async (req, res) => {
+  try {
+    await db.ref('employees/' + req.params.id).remove();
+    res.json({ success: true, id: req.params.id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. Projects APIs
 app.get('/api/projects', checkDb, async (req, res) => {
   try {
     const snapshot = await db.ref('projects').once('value');
@@ -116,16 +122,41 @@ app.get('/api/projects', checkDb, async (req, res) => {
   }
 });
 
+app.post('/api/projects', checkDb, async (req, res) => {
+  try {
+    const { name, client, budget_hours, color } = req.body;
+    if (!name) return res.status(400).json({ error: 'Project name is required.' });
+    const id = 'proj_' + Date.now() + Math.random().toString(36).substr(2, 4);
+    const newProject = { id, name, client: client || 'Internal', budget_hours: parseFloat(budget_hours) || 0.0, color: color || '#6366f1' };
+    await db.ref('projects/' + id).set(newProject);
+    res.status(201).json(newProject);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. Time Entries APIs
 app.get('/api/entries', checkDb, async (req, res) => {
   try {
-    const { employee_id, project_id, start_date, end_date } = req.query;
-    let entriesRef = db.ref('time_entries');
-    if (employee_id) entriesRef = entriesRef.orderByChild('employee_id').equalTo(employee_id);
-    const snapshot = await entriesRef.once('value');
-    let filteredEntries = Object.values(snapshot.val() || {});
-    // Simple manual filtering for multiple params if needed
-    if (project_id) filteredEntries = filteredEntries.filter(e => e.project_id === project_id);
-    res.json(filteredEntries);
+    const snapshot = await db.ref('time_entries').once('value');
+    const entries = Object.values(snapshot.val() || {});
+    
+    // Hydrate entries with names
+    const empsSnap = await db.ref('employees').once('value');
+    const projsSnap = await db.ref('projects').once('value');
+    const emps = empsSnap.val() || {};
+    const projs = projsSnap.val() || {};
+
+    const hydrated = entries.map(e => ({
+      ...e,
+      employee_name: emps[e.employee_id]?.name || 'Unknown',
+      employee_avatar: emps[e.employee_id]?.avatar || '??',
+      employee_color: emps[e.employee_id]?.color || '#888',
+      project_name: projs[e.project_id]?.name || 'Internal',
+      project_color: projs[e.project_id]?.color || '#888'
+    }));
+
+    res.json(hydrated.sort((a, b) => new Date(b.start_time) - new Date(a.start_time)));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -135,7 +166,7 @@ app.post('/api/entries', checkDb, async (req, res) => {
     try {
         const { id, employee_id, project_id, task, description, start_time, end_time, total_hours } = req.body;
         const entryId = id || db.ref('time_entries').push().key;
-        const newEntry = { id: entryId, employee_id, project_id, task, description, start_time, end_time, total_hours: parseFloat(total_hours) || 0 };
+        const newEntry = { id: entryId, employee_id, project_id, task, description: description || '', start_time, end_time: end_time || null, total_hours: parseFloat(total_hours) || 0 };
         await db.ref('time_entries/' + entryId).set(newEntry);
         res.status(201).json(newEntry);
     } catch (error) {
@@ -145,6 +176,7 @@ app.post('/api/entries', checkDb, async (req, res) => {
 
 app.post('/api/sync', checkDb, async (req, res) => {
     const { entries } = req.body;
+    if (!Array.isArray(entries)) return res.status(400).json({ error: 'Invalid entries' });
     try {
         const updates = {};
         entries.forEach(e => { updates['/time_entries/' + (e.id || db.ref().push().key)] = e; });
@@ -160,10 +192,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start Server - Bind to 0.0.0.0 for cloud compatibility
+// Start Server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n===========================================`);
-  console.log(`Chronos Flow Timekeeping Server running!`);
-  console.log(`Listening on: http://0.0.0.0:${PORT}`);
+  console.log(`Chronos Flow Timekeeping Server running on port ${PORT}`);
   console.log(`===========================================\n`);
 });
