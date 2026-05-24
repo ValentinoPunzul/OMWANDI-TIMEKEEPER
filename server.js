@@ -11,9 +11,8 @@ function initializeFirebase() {
   let serviceAccount;
   const saEnvVar = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (saEnvVar) {
-    try {
-      serviceAccount = typeof saEnvVar === 'string' ? JSON.parse(saEnvVar) : saEnvVar;
-    } catch (e) { console.error('Firebase: Error parsing Secret:', e.message); }
+    try { serviceAccount = typeof saEnvVar === 'string' ? JSON.parse(saEnvVar) : saEnvVar; } 
+    catch (e) { console.error('Firebase: Error parsing Secret:', e.message); }
   }
   if (!serviceAccount) {
     const localPath = path.join(__dirname, 'firebase-service-account.json');
@@ -25,9 +24,7 @@ function initializeFirebase() {
     if (serviceAccount) {
       config.credential = admin.credential.cert(serviceAccount);
       admin.initializeApp(config);
-    } else {
-      admin.initializeApp(config);
-    }
+    } else { admin.initializeApp(config); }
   } catch (error) { console.error('Firebase: Init Failed:', error.message); }
 }
 
@@ -53,9 +50,8 @@ app.get('/api/employees', checkDb, async (req, res) => {
 
 app.post('/api/employees', checkDb, async (req, res) => {
   const id = req.body.id || 'emp_' + Date.now();
-  const emp = { ...req.body, id };
-  await db.ref('employees/' + id).set(emp);
-  res.status(201).json(emp);
+  await db.ref('employees/' + id).set({ ...req.body, id });
+  res.status(201).json({ id });
 });
 
 app.put('/api/employees/:id', checkDb, async (req, res) => {
@@ -76,14 +72,29 @@ app.get('/api/projects', checkDb, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- Time Entries ---
+app.post('/api/projects', checkDb, async (req, res) => {
+  const id = req.body.id || 'proj_' + Date.now();
+  await db.ref('projects/' + id).set({ ...req.body, id });
+  res.status(201).json({ id });
+});
+
+app.put('/api/projects/:id', checkDb, async (req, res) => {
+  await db.ref('projects/' + req.params.id).update(req.body);
+  res.json({ success: true });
+});
+
+app.delete('/api/projects/:id', checkDb, async (req, res) => {
+  await db.ref('projects/' + req.params.id).remove();
+  res.json({ success: true });
+});
+
+// --- Entries ---
 app.get('/api/entries', checkDb, async (req, res) => {
   try {
     const snap = await db.ref('time_entries').once('value');
     const entries = Object.values(snap.val() || {});
     const emps = (await db.ref('employees').once('value')).val() || {};
     const projs = (await db.ref('projects').once('value')).val() || {};
-
     const hydrated = entries.map(e => ({
       ...e,
       employee_name: emps[e.employee_id]?.name || 'Unknown',
@@ -95,9 +106,8 @@ app.get('/api/entries', checkDb, async (req, res) => {
 
 app.post('/api/entries', checkDb, async (req, res) => {
   const id = db.ref('time_entries').push().key;
-  const entry = { ...req.body, id };
-  await db.ref('time_entries/' + id).set(entry);
-  res.status(201).json(entry);
+  await db.ref('time_entries/' + id).set({ ...req.body, id });
+  res.status(201).json({ id });
 });
 
 app.put('/api/entries/:id', checkDb, async (req, res) => {
@@ -136,5 +146,4 @@ app.post('/api/hr/dispatch', checkDb, async (req, res) => {
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
 app.listen(PORT, '0.0.0.0', () => console.log(`Server on ${PORT}`));

@@ -122,7 +122,6 @@ function renderDashboard(container) {
         if (!grouped[timer.project_id]) grouped[timer.project_id] = [];
         grouped[timer.project_id].push(timer);
     });
-
     let activeTimersHtml = activeTimers.length === 0 ? `<div style="text-align:center; color:var(--text-muted); padding:40px;">No active sessions currently running.</div>` : 
         Object.entries(grouped).map(([projectId, timers]) => {
             const project = state.projects.find(p => p.id === projectId) || { name: 'Internal', color: '#6366f1' };
@@ -138,7 +137,6 @@ function renderDashboard(container) {
             }).join('');
             return `<div class="project-group"><div class="project-header"><span class="project-dot" style="background:${project.color}"></span>${project.name}</div><div class="timers-grid">${timersList}</div></div>`;
         }).join('');
-
     container.innerHTML = `<div class="dashboard-container"><div class="clock-card glass-container"><div class="dashboard-time" id="dashboardTime">00:00:00</div><div class="dashboard-date" id="dashboardDate">LOADING...</div></div><div class="active-timers-section"><div class="section-label"><span class="pulse-emerald"></span>ACTIVE PROJECT SESSIONS</div>${activeTimersHtml}</div></div>`;
 }
 
@@ -156,28 +154,8 @@ async function stopUserTimer(id) {
 function renderTimer(container) {
     const myActiveEntry = state.timeEntries.find(e => e.employee_id === state.activeProfileId && (e.total_hours === 0 || !e.end_time));
     const projectOptions = state.projects.map(p => `<option value="${p.id}" ${myActiveEntry?.project_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('');
-    
-    let actionBtn = '';
-    if (myActiveEntry) {
-        actionBtn = `<button class="btn" style="width:100%; padding:20px; background:#ef4444; color:#fff; font-size:1.2rem; font-weight:800; border-radius:12px;" onclick="stopUserTimer('${myActiveEntry.id}')">STOP SESSION</button>`;
-    } else {
-        actionBtn = `<button class="btn primary" style="width:100%; padding:20px; font-size:1.2rem; font-weight:800; border-radius:12px;" onclick="startTimer()">START SESSION</button>`;
-    }
-
-    container.innerHTML = `
-        <div class="view-header"><h2>Live Tracker</h2></div>
-        <div class="timer-view-container glass-container" style="max-width:500px; margin: 40px auto; text-align:center;">
-             <div id="faceClock" style="font-size:5rem; font-weight:800; margin-bottom:10px; font-family:monospace;">00:00:00</div>
-             <div style="margin-bottom:30px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                ${myActiveEntry ? '<span class="pulse-emerald" style="width:10px; height:10px;"></span> <span style="color:#10b981; font-weight:700; font-size:0.8rem; letter-spacing:1px;">LIVE SESSION ACTIVE</span>' : '<span style="color:var(--text-muted); font-size:0.8rem;">READY TO TRACK</span>'}
-             </div>
-            <div style="text-align:left; margin-bottom:20px;">
-                <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:800; display:block; margin-bottom:8px;">Project Selection</label>
-                <select id="timerProjectSelect" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); color:#fff; border:1px solid var(--glass-border); border-radius:8px;" ${myActiveEntry ? 'disabled' : ''}>${projectOptions}</select>
-            </div>
-            ${actionBtn}
-        </div>
-    `;
+    let actionBtn = myActiveEntry ? `<button class="btn" style="width:100%; padding:20px; background:#ef4444; color:#fff; font-size:1.2rem; font-weight:800; border-radius:12px;" onclick="stopUserTimer('${myActiveEntry.id}')">STOP SESSION</button>` : `<button class="btn primary" style="width:100%; padding:20px; font-size:1.2rem; font-weight:800; border-radius:12px;" onclick="startTimer()">START SESSION</button>`;
+    container.innerHTML = `<div class="view-header"><h2>Live Tracker</h2></div><div class="timer-view-container glass-container" style="max-width:500px; margin: 40px auto; text-align:center;"><div id="faceClock" style="font-size:5rem; font-weight:800; margin-bottom:10px; font-family:monospace;">00:00:00</div><div style="margin-bottom:30px; display:flex; align-items:center; justify-content:center; gap:8px;">${myActiveEntry ? '<span class="pulse-emerald" style="width:10px; height:10px;"></span> <span style="color:#10b981; font-weight:700; font-size:0.8rem; letter-spacing:1px;">LIVE SESSION ACTIVE</span>' : '<span style="color:var(--text-muted); font-size:0.8rem;">READY TO TRACK</span>'}</div><div style="text-align:left; margin-bottom:20px;"><label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:800; display:block; margin-bottom:8px;">Project Selection</label><select id="timerProjectSelect" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); color:#fff; border:1px solid var(--glass-border); border-radius:8px;" ${myActiveEntry ? 'disabled' : ''}>${projectOptions}</select></div>${actionBtn}</div>`;
 }
 
 async function startTimer() {
@@ -233,8 +211,7 @@ window.deleteTimesheetEntry = async (id) => {
 function renderSettings(container) {
     const isAdmin = state.userRole === 'Administrator';
     const sortedEmployees = [...state.employees].sort((a, b) => {
-        let valA = a[state.employeeSortField] || '';
-        let valB = b[state.employeeSortField] || '';
+        let valA = a[state.employeeSortField] || ''; let valB = b[state.employeeSortField] || '';
         if (state.employeeSortField === 'emp_no') { valA = parseInt(valA) || 0; valB = parseInt(valB) || 0; }
         else { valA = valA.toString().toLowerCase(); valB = valB.toString().toLowerCase(); }
         if (valA < valB) return state.employeeSortDir === 'asc' ? -1 : 1;
@@ -242,14 +219,130 @@ function renderSettings(container) {
         return 0;
     });
     const getSortIcon = (f) => state.employeeSortField !== f ? '↕️' : (state.employeeSortDir === 'asc' ? '🔼' : '🔽');
-    container.innerHTML = `<div class="view-header"><h2>Settings</h2></div><div class="glass-container" style="margin-bottom:24px;"><h3 id="userFormTitle">User Management</h3><div id="userFormContainer" class="settings-form" style="margin-top:20px;"><input type="hidden" id="userId"><div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Employee Number</label><input type="text" id="userEmpNo" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Full Name</label><input type="text" id="userName" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div></div><div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Designation</label><input type="text" id="userDesignation" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Department</label><input type="text" id="userDepartment" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div></div><div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Access Role</label><select id="userAccessRole" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"><option value="Employee">Employee</option><option value="Editor">Editor</option><option value="Administrator">Administrator</option></select></div><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Reports To</label><input type="text" id="userReportsTo" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div></div><div class="form-row" style="display:grid; grid-template-columns: 1fr 44px; gap:16px; margin-bottom:16px;"><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Avatar URL</label><input type="text" id="userAvatarUrl" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Color</label><input type="color" id="userColor" value="#6366f1" style="height:44px; width:44px; border:none; background:none; padding:0; cursor:pointer;"></div></div><div class="btn-group" style="display:flex; gap:12px; margin-top:10px;"><button class="btn primary" onclick="handleUserSubmit()">Save Employee</button><button class="btn outline" onclick="resetUserForm()">Clear</button></div></div></div><div class="glass-container" style="margin-bottom:24px;"><h3>Employee List</h3><div style="overflow-x:auto;"><table style="width:100%; margin-top:20px;"><thead><tr style="text-align:left; color:var(--text-muted); font-size:0.8rem; cursor:pointer;"><th onclick="setEmployeeSort('emp_no')">No ${getSortIcon('emp_no')}</th><th onclick="setEmployeeSort('name')">Name ${getSortIcon('name')}</th><th onclick="setEmployeeSort('access_role')">Role ${getSortIcon('access_role')}</th><th onclick="setEmployeeSort('department')">Dept ${getSortIcon('department')}</th><th>Actions</th></tr></thead><tbody>${sortedEmployees.map(e => `<tr style="border-bottom:1px solid var(--glass-border);"><td style="padding:12px 0;">${e.emp_no || ''}</td><td>${e.name || ''}</td><td>${e.access_role || 'Employee'}</td><td>${e.department || ''}</td><td><button class="btn-text" style="color:var(--accent-primary);" onclick="editEmployee('${e.id}')">Edit</button>${isAdmin ? `<button class="btn-text" style="color:#ef4444; margin-left:8px;" onclick="deleteEmployee('${e.id}')">Del</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div>${isAdmin ? `<div class="glass-container"><h3>System Actions</h3><button class="btn primary" style="margin-top:20px;" onclick="triggerHrDispatchFlow()">Dispatch HR Report (CSV)</button></div>` : ''}`;
+    
+    const projectOptions = state.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
+    container.innerHTML = `
+        <div class="view-header"><h2>Settings</h2></div>
+        
+        <!-- Project Management -->
+        <div class="glass-container" style="margin-bottom:24px;">
+            <h3 id="projectFormTitle">Project Management</h3>
+            <div style="margin-top:20px;">
+                <label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Select Project to Edit</label>
+                <select id="projectSelect" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px; margin-bottom:20px;" onchange="handleProjectSelect(this.value)">
+                    <option value="">-- Add New Project --</option>
+                    ${projectOptions}
+                </select>
+            </div>
+            <div id="projectForm" class="settings-form">
+                <input type="hidden" id="projectId">
+                <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Project Name</label><input type="text" id="projectName" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Client Name</label><input type="text" id="projectClient" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                </div>
+                <div class="form-row" style="display:grid; grid-template-columns: 1fr 44px; gap:16px; margin-bottom:16px;">
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Theme Color</label></div>
+                    <input type="color" id="projectColor" value="#6366f1" style="height:44px; width:44px; border:none; background:none; padding:0; cursor:pointer;">
+                </div>
+                <div class="btn-group" style="display:flex; gap:12px; margin-top:10px;">
+                    <button class="btn primary" onclick="handleProjectSubmit()">Save Project</button>
+                    ${isAdmin ? `<button id="deleteProjectBtn" class="btn outline" style="color:#ef4444; border-color:#ef4444; display:none;" onclick="deleteProject()">Delete Project</button>` : ''}
+                    <button class="btn outline" onclick="resetProjectForm()">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management -->
+        <div class="glass-container" style="margin-bottom:24px;">
+            <h3 id="userFormTitle">User Management</h3>
+            <div id="userFormContainer" class="settings-form" style="margin-top:20px;">
+                <input type="hidden" id="userId">
+                <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Employee Number</label><input type="text" id="userEmpNo" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Full Name</label><input type="text" id="userName" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                </div>
+                <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Designation</label><input type="text" id="userDesignation" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Department</label><input type="text" id="userDepartment" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                </div>
+                <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Access Role</label><select id="userAccessRole" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"><option value="Employee">Employee</option><option value="Editor">Editor</option><option value="Administrator">Administrator</option></select></div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Reports To</label><input type="text" id="userReportsTo" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                </div>
+                <div class="form-row" style="display:grid; grid-template-columns: 1fr 44px; gap:16px; margin-bottom:16px;">
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Avatar URL</label><input type="text" id="userAvatarUrl" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Color</label><input type="color" id="userColor" value="#6366f1" style="height:44px; width:44px; border:none; background:none; padding:0; cursor:pointer;"></div>
+                </div>
+                <div class="btn-group" style="display:flex; gap:12px; margin-top:10px;"><button class="btn primary" onclick="handleUserSubmit()">Save Employee</button><button class="btn outline" onclick="resetUserForm()">Clear</button></div>
+            </div>
+        </div>
+
+        <div class="glass-container" style="margin-bottom:24px;">
+            <h3>Employee List</h3>
+            <div style="overflow-x:auto;">
+                <table style="width:100%; margin-top:20px;">
+                    <thead><tr style="text-align:left; color:var(--text-muted); font-size:0.8rem; cursor:pointer;"><th onclick="setEmployeeSort('emp_no')">No ${getSortIcon('emp_no')}</th><th onclick="setEmployeeSort('name')">Name ${getSortIcon('name')}</th><th onclick="setEmployeeSort('access_role')">Role ${getSortIcon('access_role')}</th><th onclick="setEmployeeSort('department')">Dept ${getSortIcon('department')}</th><th>Actions</th></tr></thead>
+                    <tbody>${sortedEmployees.map(e => `<tr style="border-bottom:1px solid var(--glass-border);"><td style="padding:12px 0;">${e.emp_no || ''}</td><td>${e.name || ''}</td><td>${e.access_role || 'Employee'}</td><td>${e.department || ''}</td><td><button class="btn-text" style="color:var(--accent-primary);" onclick="editEmployee('${e.id}')">Edit</button>${isAdmin ? `<button class="btn-text" style="color:#ef4444; margin-left:8px;" onclick="deleteEmployee('${e.id}')">Del</button>` : ''}</td></tr>`).join('')}</tbody>
+                </table>
+            </div>
+        </div>
+
+        ${isAdmin ? `<div class="glass-container"><h3>System Actions</h3><button class="btn primary" style="margin-top:20px;" onclick="triggerHrDispatchFlow()">Dispatch HR Report (CSV)</button></div>` : ''}
+    `;
 }
 
-window.setEmployeeSort = (field) => {
-    if (state.employeeSortField === field) state.employeeSortDir = state.employeeSortDir === 'asc' ? 'desc' : 'asc';
-    else { state.employeeSortField = field; state.employeeSortDir = 'asc'; }
+// --- Project Logic ---
+
+window.handleProjectSelect = (id) => {
+    const project = state.projects.find(p => p.id === id);
+    if (project) {
+        document.getElementById('projectId').value = project.id;
+        document.getElementById('projectName').value = project.name;
+        document.getElementById('projectClient').value = project.client || '';
+        document.getElementById('projectColor').value = project.color || '#6366f1';
+        document.getElementById('projectFormTitle').textContent = 'Edit Project: ' + project.name;
+        document.getElementById('deleteProjectBtn').style.display = 'inline-block';
+    } else {
+        resetProjectForm();
+    }
+};
+
+window.handleProjectSubmit = async () => {
+    const name = document.getElementById('projectName').value;
+    if (!name) return alert('Project name is required');
+    const data = {
+        name: name,
+        client: document.getElementById('projectClient').value,
+        color: document.getElementById('projectColor').value
+    };
+    const id = document.getElementById('projectId').value;
+    if (id) await apiRequest(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    else await apiRequest('/api/projects', { method: 'POST', body: JSON.stringify(data) });
+    await initializeState();
     renderSettings(document.getElementById('mainContent'));
 };
+
+window.deleteProject = async () => {
+    const id = document.getElementById('projectId').value;
+    if (!id || !confirm('Are you sure you want to delete this project? This will not remove existing time entries but may break links.')) return;
+    await apiRequest(`/api/projects/${id}`, { method: 'DELETE' });
+    await initializeState();
+    renderSettings(document.getElementById('mainContent'));
+};
+
+window.resetProjectForm = () => {
+    document.getElementById('projectId').value = '';
+    document.getElementById('projectName').value = '';
+    document.getElementById('projectClient').value = '';
+    document.getElementById('projectColor').value = '#6366f1';
+    document.getElementById('projectFormTitle').textContent = 'Project Management';
+    document.getElementById('projectSelect').value = '';
+    const delBtn = document.getElementById('deleteProjectBtn');
+    if (delBtn) delBtn.style.display = 'none';
+};
+
+// --- Employee Logic ---
 
 async function handleUserSubmit() {
     const name = document.getElementById('userName').value;
@@ -274,7 +367,6 @@ window.editEmployee = (id) => {
     document.getElementById('userAvatarUrl').value = emp.avatar_url || '';
     document.getElementById('userColor').value = emp.color || '#6366f1';
     document.getElementById('userFormTitle').textContent = 'Edit Employee: ' + emp.name;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 window.deleteEmployee = async (id) => {
@@ -288,9 +380,10 @@ window.resetUserForm = () => {
     document.getElementById('userId').value = ''; document.getElementById('userEmpNo').value = ''; document.getElementById('userName').value = ''; document.getElementById('userDesignation').value = ''; document.getElementById('userDepartment').value = ''; document.getElementById('userAccessRole').value = 'Employee'; document.getElementById('userReportsTo').value = ''; document.getElementById('userAvatarUrl').value = ''; document.getElementById('userColor').value = '#6366f1'; document.getElementById('userFormTitle').textContent = 'User Management';
 };
 
+// --- Utils ---
+
 async function triggerHrDispatchFlow() { const res = await apiRequest('/api/hr/dispatch', { method: 'POST' }); alert(`Report generated: ${res.filename}`); }
 function handleLogout() { state.activeProfileId = null; localStorage.removeItem('chronos_user_id'); checkAuth(); }
-
 function setupGlobalEventListeners() {
     document.querySelectorAll('.nav-item').forEach(item => { item.addEventListener('click', (e) => switchView(e.currentTarget.getAttribute('data-view'))); });
     document.getElementById('loginForm')?.addEventListener('submit', (e) => {
@@ -302,20 +395,16 @@ function setupGlobalEventListeners() {
     });
     document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
 }
-
 function setupNetworkMonitoring() {
     window.addEventListener('online', () => document.getElementById('statusDot').className = 'status-dot online');
     window.addEventListener('offline', () => document.getElementById('statusDot').className = 'status-dot offline');
 }
-
 function showNotification(msg, type) {
     const c = document.getElementById('notificationContainer');
     if (!c) return;
     const n = document.createElement('div');
-    n.className = `notification ${type}`;
-    n.textContent = msg;
+    n.className = `notification ${type}`; n.textContent = msg;
     n.style.padding = '12px 24px'; n.style.background = type === 'success' ? '#10b981' : '#ef4444';
     n.style.color = '#fff'; n.style.borderRadius = '8px'; n.style.marginTop = '10px';
-    c.appendChild(n);
-    setTimeout(() => n.remove(), 3000);
+    c.appendChild(n); setTimeout(() => n.remove(), 3000);
 }
