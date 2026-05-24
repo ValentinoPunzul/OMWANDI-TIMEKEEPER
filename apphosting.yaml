@@ -3,6 +3,5 @@
 
 env:
   - variable: FIREBASE_SERVICE_ACCOUNT
-    # You should set this secret in the Firebase Console under App Hosting -> Secrets
-    # or via the CLI: firebase apphosting:secrets:set FIREBASE_SERVICE_ACCOUNT
-    secret: FIREBASE_SERVICE_ACCOUNT
+    # We removed the 'secret' line to use the Environment Variable 
+    # you added manually in the Firebase Console.
