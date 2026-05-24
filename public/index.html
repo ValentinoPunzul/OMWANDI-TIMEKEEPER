@@ -18,54 +18,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=3.0">
 </head>
 <body class="dark-theme">
   
   <!-- App Container Grid -->
   <div class="app-layout">
     
-    <!-- Sidebar (Desktop and Tablets) -->
+    <!-- Sidebar -->
     <aside class="sidebar glass-container">
       <div class="brand">
-        <div class="logo-wrapper">
-          <svg class="brand-logo" viewBox="0 0 512 512" width="36" height="36">
-            <circle cx="256" cy="256" r="160" fill="none" stroke="url(#sidebarLogoGrad)" stroke-width="24" />
-            <path d="M190 180 C190 180, 200 235, 240 250 C200 265, 190 320, 190 320" fill="none" stroke="#818cf8" stroke-width="12" />
-            <path d="M322 180 C322 180, 312 235, 272 250 C312 265, 322 320, 322 320" fill="none" stroke="#22d3ee" stroke-width="12" />
-            <line x1="180" y1="180" x2="332" y2="180" stroke="#818cf8" stroke-width="14" stroke-linecap="round"/>
-            <line x1="180" y1="320" x2="332" y2="320" stroke="#22d3ee" stroke-width="14" stroke-linecap="round"/>
-            <circle cx="256" cy="250" r="14" fill="#fbbf24" />
-            <defs>
-              <linearGradient id="sidebarLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#c084fc" />
-                <stop offset="100%" stop-color="#06b6d4" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
         <div class="brand-text">
           <h1>Chronos</h1>
           <span class="badge neon-glow-text">Flow</span>
-        </div>
-      </div>
-
-      <!-- User Active Profile Card -->
-      <div class="profile-card glass-panel">
-        <div class="profile-avatar" id="activeProfileAvatar">SL</div>
-        <div class="profile-info">
-          <h4 id="activeProfileName">Sophia Lin</h4>
-          <span id="activeProfileRole">Lead Developer</span>
-        </div>
-        <div class="profile-selector-btn" id="triggerProfileMenu">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-        </div>
-        <!-- Hidden Dropdown for Profile Switching -->
-        <div class="profile-dropdown glass-container" id="profileDropdown">
-          <div class="dropdown-header">Switch Profile</div>
-          <div class="dropdown-options" id="profileOptionsContainer">
-            <!-- Rendered by JS -->
-          </div>
         </div>
       </div>
 
@@ -93,375 +58,26 @@
         </button>
       </nav>
 
-      <!-- App Status Footnotes (Offline Status, Sync, Settings) -->
+      <!-- App Status Footer -->
       <div class="sidebar-footer">
-        <div class="status-hud glass-panel">
-          <div class="status-indicator">
-            <span class="status-dot" id="statusDot"></span>
-            <span class="status-text" id="statusText">Connecting...</span>
-          </div>
-          <button class="icon-btn" id="triggerSettings" title="HR & Sync Settings">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </button>
+        <div class="status-indicator">
+          <span class="status-dot online" id="statusDot"></span>
+          <span class="status-text" id="statusText">Cloud Synced</span>
         </div>
       </div>
     </aside>
-
-    <!-- Mobile Top Header Bar -->
-    <header class="mobile-header glass-container">
-      <div class="mobile-brand">
-        <svg class="brand-logo" viewBox="0 0 512 512" width="28" height="28">
-          <circle cx="256" cy="256" r="160" fill="none" stroke="url(#mobileLogoGrad)" stroke-width="24" />
-          <path d="M190 180 C190 180, 200 235, 240 250 C200 265, 190 320, 190 320" fill="none" stroke="#818cf8" stroke-width="12" />
-          <path d="M322 180 C322 180, 312 235, 272 250 C312 265, 322 320, 322 320" fill="none" stroke="#22d3ee" stroke-width="12" />
-          <defs>
-            <linearGradient id="mobileLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#c084fc" />
-              <stop offset="100%" stop-color="#06b6d4" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <span>Chronos</span>
-      </div>
-      <div class="mobile-controls">
-        <div class="mobile-network-indicator" id="mobileNetworkStatus" title="Offline Status">
-          <span class="status-dot online" id="mobileStatusDot"></span>
-        </div>
-        <div class="mobile-avatar" id="mobileProfileAvatar">SL</div>
-      </div>
-    </header>
 
     <!-- Main View Content Area -->
     <main class="main-content" id="mainContent">
       <!-- Views are dynamically injected here via app.js -->
     </main>
-
-    <!-- Floating Global Running Timer Strip -->
-    <div class="floating-timer-strip glass-container hidden" id="globalTimerStrip">
-      <div class="strip-left">
-        <span class="pulse-emerald"></span>
-        <div class="strip-details">
-          <span class="strip-project" id="stripProject">Mars Rover UI</span>
-          <span class="strip-task" id="stripTask">Development</span>
-        </div>
-      </div>
-      <div class="strip-right">
-        <div class="strip-clock" id="stripClock">00:00:00</div>
-        <div class="strip-actions">
-          <button class="strip-btn pause" id="stripPauseBtn" title="Pause Timer">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-          </button>
-          <button class="strip-btn stop" id="stripStopBtn" title="Stop & Log Timer">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mobile Bottom Navigation Bar -->
-    <nav class="mobile-nav glass-container">
-      <button class="mobile-nav-item active" data-view="dashboard">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-        <span>Dashboard</span>
-      </button>
-      <button class="mobile-nav-item" data-view="timer">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>Timer</span>
-      </button>
-      <button class="mobile-nav-item" data-view="projects">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        <span>Projects</span>
-      </button>
-      <button class="mobile-nav-item" data-view="team">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span>Team</span>
-      </button>
-      <button class="mobile-nav-item" data-view="timesheets">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        <span>History</span>
-      </button>
-    </nav>
     
-  </div>
-
-  <!-- ============================================
-       MODALS & OVERLAYS
-       ============================================ -->
-
-  <!-- 1. Global Settings / HR Configuration Modal -->
-  <div class="modal-overlay" id="settingsModal">
-    <div class="modal glass-container">
-      <div class="modal-header">
-        <h3>HR & System Configuration</h3>
-        <button class="close-btn" id="closeSettingsModal">&times;</button>
-      </div>
-      <form class="modal-form" id="settingsForm">
-        <div class="form-group">
-          <label for="hrEmail">HR Department Email</label>
-          <input type="email" id="hrEmail" placeholder="hr@yourcompany.com" value="hr@company.com" required>
-          <span class="input-info">Target box for compiled spreadsheet dispatches.</span>
-        </div>
-        <div class="form-group">
-          <label for="hrWebhook">HR Sync API Webhook (Optional)</label>
-          <input type="url" id="hrWebhook" placeholder="https://api.yourcompany.com/hr/sync" value="">
-          <span class="input-info">URL endpoint to pipe automatic JSON sync files to.</span>
-        </div>
-        <div class="form-group">
-          <label>Data Reconciler Engine</label>
-          <div class="sync-actions-box glass-panel">
-            <div class="sync-info">
-              <span id="pendingSyncText">0 items waiting in offline queue</span>
-            </div>
-            <button type="button" class="btn secondary" id="forceSyncBtn">Reconcile Sync Now</button>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn outline" id="cancelSettingsBtn">Close</button>
-          <button type="submit" class="btn primary">Save Changes</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- 2. Create Project Modal -->
-  <div class="modal-overlay" id="projectModal">
-    <div class="modal glass-container">
-      <div class="modal-header">
-        <h3>Launch New Project</h3>
-        <button class="close-btn" id="closeProjectModal">&times;</button>
-      </div>
-      <form class="modal-form" id="projectForm">
-        <div class="form-group">
-          <label for="projectName">Project Name</label>
-          <input type="text" id="projectName" placeholder="e.g. Mars Rover Core" required>
-        </div>
-        <div class="form-group">
-          <label for="projectClient">Client / Department</label>
-          <input type="text" id="projectClient" placeholder="e.g. NASA Jet Propulsion Lab" required>
-        </div>
-        <div class="form-group">
-          <label for="projectBudget">Budget Allocated (Hours)</label>
-          <input type="number" id="projectBudget" min="0" placeholder="e.g. 100" value="80">
-          <span class="input-info">Progress indicators glow rose if this limit is reached.</span>
-        </div>
-        <div class="form-group">
-          <label>Project Palette Accent</label>
-          <div class="color-palette-selector">
-            <label class="color-radio" style="background-color: #6366f1;"><input type="radio" name="projColor" value="#6366f1" checked></label>
-            <label class="color-radio" style="background-color: #a855f7;"><input type="radio" name="projColor" value="#a855f7"></label>
-            <label class="color-radio" style="background-color: #ec4899;"><input type="radio" name="projColor" value="#ec4899"></label>
-            <label class="color-radio" style="background-color: #f43f5e;"><input type="radio" name="projColor" value="#f43f5e"></label>
-            <label class="color-radio" style="background-color: #f97316;"><input type="radio" name="projColor" value="#f97316"></label>
-            <label class="color-radio" style="background-color: #eab308;"><input type="radio" name="projColor" value="#eab308"></label>
-            <label class="color-radio" style="background-color: #10b981;"><input type="radio" name="projColor" value="#10b981"></label>
-            <label class="color-radio" style="background-color: #06b6d4;"><input type="radio" name="projColor" value="#06b6d4"></label>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn outline" id="cancelProjectBtn">Cancel</button>
-          <button type="submit" class="btn primary">Launch Project</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- 3. Add Team Member Modal -->
-  <div class="modal-overlay" id="teamModal">
-    <div class="modal glass-container">
-      <div class="modal-header">
-        <h3>Register Team Member</h3>
-        <button class="close-btn" id="closeTeamModal">&times;</button>
-      </div>
-      <form class="modal-form" id="teamForm">
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="memberName">Full Name</label>
-            <input type="text" id="memberName" placeholder="e.g. Olivia Wilde" required>
-          </div>
-          <div class="form-group" style="width: 140px;">
-            <label for="memberEmpNo">Employee No.</label>
-            <input type="text" id="memberEmpNo" placeholder="e.g. E001">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="memberRole">Job Title / Role</label>
-          <input type="text" id="memberRole" placeholder="e.g. Lead QA Engineer" required>
-        </div>
-        <div class="form-group">
-          <label for="memberReportsTo">Reports To</label>
-          <input type="text" id="memberReportsTo" placeholder="e.g. Herman Karsten">
-        </div>
-        <div class="form-group">
-          <label>Profile Theme Color</label>
-          <div class="color-palette-selector">
-            <label class="color-radio" style="background-color: #6366f1;"><input type="radio" name="empColor" value="#6366f1" checked></label>
-            <label class="color-radio" style="background-color: #a855f7;"><input type="radio" name="empColor" value="#a855f7"></label>
-            <label class="color-radio" style="background-color: #ec4899;"><input type="radio" name="empColor" value="#ec4899"></label>
-            <label class="color-radio" style="background-color: #f43f5e;"><input type="radio" name="empColor" value="#f43f5e"></label>
-            <label class="color-radio" style="background-color: #f97316;"><input type="radio" name="empColor" value="#f97316"></label>
-            <label class="color-radio" style="background-color: #eab308;"><input type="radio" name="empColor" value="#eab308"></label>
-            <label class="color-radio" style="background-color: #10b981;"><input type="radio" name="empColor" value="#10b981"></label>
-            <label class="color-radio" style="background-color: #06b6d4;"><input type="radio" name="empColor" value="#06b6d4"></label>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn outline" id="cancelTeamBtn">Cancel</button>
-          <button type="submit" class="btn primary">Register Member</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: EDIT TEAM MEMBER -->
-  <div class="modal-overlay" id="editTeamModal">
-    <div class="modal glass-container">
-      <div class="modal-header">
-        <h3>Edit Team Member</h3>
-        <button class="close-btn" id="closeEditTeamModal">&times;</button>
-      </div>
-      <form class="modal-form" id="editTeamForm">
-        <input type="hidden" id="editMemberId">
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="editMemberName">Full Name</label>
-            <input type="text" id="editMemberName" required>
-          </div>
-          <div class="form-group" style="width: 140px;">
-            <label for="editMemberEmpNo">Employee No.</label>
-            <input type="text" id="editMemberEmpNo" placeholder="e.g. E001">
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="editMemberRole">Job Title / Role</label>
-          <input type="text" id="editMemberRole" required>
-        </div>
-        <div class="form-group">
-          <label for="editMemberReportsTo">Reports To</label>
-          <input type="text" id="editMemberReportsTo">
-        </div>
-        <div class="form-group">
-          <label>Profile Theme Color</label>
-          <div class="color-palette-selector">
-            <label class="color-radio" style="background-color: #6366f1;"><input type="radio" name="editEmpColor" value="#6366f1"></label>
-            <label class="color-radio" style="background-color: #a855f7;"><input type="radio" name="editEmpColor" value="#a855f7"></label>
-            <label class="color-radio" style="background-color: #ec4899;"><input type="radio" name="editEmpColor" value="#ec4899"></label>
-            <label class="color-radio" style="background-color: #f43f5e;"><input type="radio" name="editEmpColor" value="#f43f5e"></label>
-            <label class="color-radio" style="background-color: #f97316;"><input type="radio" name="editEmpColor" value="#f97316"></label>
-            <label class="color-radio" style="background-color: #eab308;"><input type="radio" name="editEmpColor" value="#eab308"></label>
-            <label class="color-radio" style="background-color: #10b981;"><input type="radio" name="editEmpColor" value="#10b981"></label>
-            <label class="color-radio" style="background-color: #06b6d4;"><input type="radio" name="editEmpColor" value="#06b6d4"></label>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button type="submit" class="btn primary">Save Changes</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- 4. Log Time Manually Modal -->
-  <div class="modal-overlay" id="manualLogModal">
-    <div class="modal glass-container">
-      <div class="modal-header">
-        <h3>Log Time Manually</h3>
-        <button class="close-btn" id="closeManualLogModal">&times;</button>
-      </div>
-      <form class="modal-form" id="manualLogForm">
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="manualProject">Project</label>
-            <select id="manualProject" required>
-              <!-- Populated by JS -->
-            </select>
-          </div>
-          <div class="form-group flex-1">
-            <label for="manualTask">Task Category</label>
-            <select id="manualTask" required>
-              <option value="Development">Development</option>
-              <option value="UI Styling">UI Styling</option>
-              <option value="Meeting">Meeting</option>
-              <option value="Debugging">Debugging</option>
-              <option value="Planning">Planning</option>
-              <option value="Testing">Testing</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="manualDate">Date</label>
-            <input type="date" id="manualDate" required>
-          </div>
-          <div class="form-group flex-1">
-            <label for="manualHours">Hours Logged</label>
-            <input type="number" id="manualHours" step="0.1" min="0.1" max="24" placeholder="e.g. 4.5" required>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="manualDesc">Short Description</label>
-          <input type="text" id="manualDesc" placeholder="e.g. Refactored API routing parameters" required>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn outline" id="cancelManualLogBtn">Cancel</button>
-          <button type="submit" class="btn primary">Log Hours</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- 5. Edit Existing Time Entry Modal -->
-  <div class="modal-overlay" id="editEntryModal">
-    <div class="modal glass-container">
-      <div class="modal-header">
-        <h3>Modify Time Entry</h3>
-        <button class="close-btn" id="closeEditEntryModal">&times;</button>
-      </div>
-      <form class="modal-form" id="editEntryForm">
-        <input type="hidden" id="editEntryId">
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="editProject">Project</label>
-            <select id="editProject" required>
-              <!-- Populated by JS -->
-            </select>
-          </div>
-          <div class="form-group flex-1">
-            <label for="editTask">Task Category</label>
-            <select id="editTask" required>
-              <option value="Development">Development</option>
-              <option value="UI Styling">UI Styling</option>
-              <option value="Meeting">Meeting</option>
-              <option value="Debugging">Debugging</option>
-              <option value="Planning">Planning</option>
-              <option value="Testing">Testing</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label for="editDate">Date</label>
-            <input type="date" id="editDate" required>
-          </div>
-          <div class="form-group flex-1">
-            <label for="editHours">Hours Logged</label>
-            <input type="number" id="editHours" step="0.1" min="0.1" max="24" required>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="editDesc">Short Description</label>
-          <input type="text" id="editDesc" required>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn outline" id="cancelEditEntryBtn">Cancel</button>
-          <button type="submit" class="btn primary">Save Changes</button>
-        </div>
-      </form>
-    </div>
   </div>
 
   <!-- Notification Banner Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
   <!-- Core Client Application Javascript File -->
-  <script src="app.js"></script>
+  <script src="/app.js?v=3.0"></script>
 </body>
 </html>
