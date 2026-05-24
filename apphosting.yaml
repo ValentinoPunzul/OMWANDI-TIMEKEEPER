@@ -1,0 +1,8 @@
+# Firebase App Hosting configuration
+# This file defines how your application environment is configured.
+
+env:
+  - variable: FIREBASE_SERVICE_ACCOUNT
+    # You should set this secret in the Firebase Console under App Hosting -> Secrets
+    # or via the CLI: firebase apphosting:secrets:set FIREBASE_SERVICE_ACCOUNT
+    secret: FIREBASE_SERVICE_ACCOUNT

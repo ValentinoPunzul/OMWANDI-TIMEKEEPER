@@ -1,221 +1,95 @@
-/* ==========================================================================
-   CHRONOS FLOW - PREMIUM STYLING SYSTEM
-   ========================================================================== */
-
-/* Design System Variables */
 :root {
-  /* Colors - Sleek Obsidian & Neon Accents */
-  --bg-base: #0a0f1d;
-  --bg-gradient: radial-gradient(circle at 50% 50%, #0f162d 0%, #050811 100%);
-  --bg-surface: rgba(15, 23, 42, 0.45);
-  --bg-surface-hover: rgba(30, 41, 59, 0.6);
-  --bg-surface-opaque: #0f172a;
-  
-  --border-glass: rgba(255, 255, 255, 0.06);
-  --border-glass-focus: rgba(99, 102, 241, 0.4);
-  
-  /* Neons */
-  --primary: #6366f1;         /* Indigo */
-  --primary-glow: rgba(99, 102, 241, 0.35);
-  --primary-gradient: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
-  
-  --secondary: #06b6d4;       /* Cyan */
-  --secondary-glow: rgba(6, 182, 212, 0.35);
-  --secondary-gradient: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-
-  /* Status Accents */
-  --accent-emerald: #10b981;  /* Success / Active Timer */
-  --accent-emerald-glow: rgba(16, 185, 129, 0.25);
-  --accent-amber: #f59e0b;    /* Warning / Near Budget */
-  --accent-rose: #f43f5e;     /* Critical / Budget Blown */
-  --accent-rose-glow: rgba(244, 63, 94, 0.25);
-  
-  /* Typography Text Colors */
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dark: #0f172a;
-
-  /* Font weight, shadows and shapes */
-  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --radius-lg: 20px;
+  --bg-base: #0a0c14;
+  --bg-gradient: radial-gradient(circle at top left, #1a1d2e, #0a0c14);
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --accent-primary: #6366f1;
+  --text-main: #ffffff;
+  --text-muted: #8e91a1;
+  --radius-lg: 16px;
   --radius-md: 12px;
-  --radius-sm: 8px;
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
-  --shadow-panel: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* Reset and Global Styles */
-*, *::before, *::after {
-  box-sizing: border-box;
+body {
   margin: 0;
-  padding: 0;
-}
-
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  font-family: var(--font-family);
+  font-family: 'Outfit', sans-serif;
   background: var(--bg-base);
   background-image: var(--bg-gradient);
   color: var(--text-main);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
-/* Core Glassmorphism Base Styles */
 .glass-container {
-  background: var(--bg-surface);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid var(--border-glass);
-  box-shadow: var(--shadow-panel);
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
 }
 
-.glass-panel {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-md);
-  transition: var(--transition-smooth);
+.app-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
 }
 
-/* Dashboard Centered Layout */
-.dashboard-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 1000px;
-    margin: 0 auto;
-    gap: 40px;
+/* Sidebar */
+.sidebar {
+  padding: 30px;
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
 }
 
-.clock-card {
-    text-align: center;
-    padding: 40px;
-    width: 100%;
-    border-radius: var(--radius-lg);
-    background: radial-gradient(circle at top, rgba(99, 102, 241, 0.1), transparent);
+.brand h1 { font-size: 1.5rem; margin: 0; letter-spacing: 1px; }
+.nav-menu { margin-top: 40px; display: flex; flex-direction: column; gap: 8px; }
+.nav-item {
+  background: none; border: none; color: var(--text-muted);
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-radius: var(--radius-md); cursor: pointer; text-align: left;
+  transition: 0.2s;
 }
+.nav-item:hover, .nav-item.active { background: var(--glass-bg); color: #fff; }
+.nav-item.active { box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); }
 
-.dashboard-time {
-    font-size: 5rem;
-    font-weight: 800;
-    letter-spacing: -2px;
-    line-height: 1;
-    color: #fff;
-    text-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+/* Command Center */
+.main-content { padding: 40px; }
+.view-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; }
+.header-main h2 { font-size: 2rem; margin: 0; }
+.header-main p { color: var(--text-muted); margin: 8px 0 0 0; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 40px; }
+.stat-card .stat-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; letter-spacing: 1px; display: flex; justify-content: space-between; }
+.stat-card .stat-value { font-size: 2.5rem; font-weight: 800; margin: 12px 0; }
+.stat-card .stat-sub { font-size: 0.85rem; color: var(--text-muted); }
+
+.dashboard-main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+
+/* Activities */
+.activity-list { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
+.activity-item {
+  display: flex; align-items: center; gap: 16px; padding: 16px;
+  background: rgba(255,255,255,0.02); border-radius: var(--radius-md);
 }
+.activity-dot { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.activity-info { flex: 1; }
+.activity-task { font-weight: 600; margin-bottom: 4px; }
+.activity-meta { font-size: 0.85rem; color: var(--text-muted); }
+.activity-hours { text-align: right; }
+.hours-val { font-weight: 700; color: var(--accent-primary); }
+.hours-date { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
 
-.dashboard-date {
-    font-size: 1.2rem;
-    color: var(--text-muted);
-    font-weight: 500;
-    margin-top: 10px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
+/* Buttons & Inputs */
+.btn {
+  padding: 12px 24px; border-radius: var(--radius-md); border: none;
+  font-weight: 600; cursor: pointer; transition: 0.2s;
 }
+.btn.primary { background: var(--accent-primary); color: #fff; }
+.btn.primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); }
 
-/* Active Timers Grouping */
-.active-timers-section {
-    width: 100%;
-}
-
-.section-label {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.project-group {
-    margin-bottom: 30px;
-}
-
-.project-header {
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-glass);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.project-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-}
-
-.timers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
-}
-
-.timer-card {
-    padding: 16px;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.timer-avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    color: #fff;
-    font-size: 0.9rem;
-}
-
-.timer-user-info {
-    flex-grow: 1;
-}
-
-.timer-user-name {
-    font-weight: 600;
-    font-size: 0.95rem;
-}
-
-.timer-task-name {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
-.timer-counter {
-    font-family: monospace;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--accent-emerald);
-}
-
-/* Rest of the original layout styles... */
-.app-layout { display: grid; grid-template-columns: 280px 1fr; width: 100vw; height: 100vh; overflow: hidden; }
-.sidebar { display: flex; flex-direction: column; height: 100vh; border-right: 1px solid var(--border-glass); padding: 24px; }
-.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
-.brand-text h1 { font-size: 1.3rem; font-weight: 800; }
-.profile-card { display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 24px; position: relative; }
-.nav-menu { display: flex; flex-direction: column; gap: 8px; flex-grow: 1; }
-.nav-item { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: var(--radius-md); cursor: pointer; border: none; background: transparent; color: var(--text-muted); }
-.nav-item.active { background: rgba(99, 102, 241, 0.1); color: #fff; }
-.main-content { padding: 40px; overflow-y: auto; height: 100vh; }
 .hidden { display: none !important; }
 
-@media (max-width: 768px) {
-    .app-layout { grid-template-columns: 1fr; }
-    .sidebar { display: none; }
-    .dashboard-time { font-size: 3.5rem; }
-}
+/* Utils */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+.status-dot.online { background: #10b981; box-shadow: 0 0 8px #10b981; }
+.status-dot.offline { background: #ef4444; }
