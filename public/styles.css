@@ -29,21 +29,39 @@ body {
   padding: 30px;
 }
 
+.form-control {
+  width: 100%;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: #fff !important;
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+
+.form-control[readonly] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 .app-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
   min-height: 100vh;
 }
 
-/* Sidebar Hiding for Employees */
-.app-layout.no-sidebar {
-  grid-template-columns: 1fr;
-}
-.no-sidebar .sidebar {
-  display: none !important;
-}
+.app-layout.no-sidebar { grid-template-columns: 1fr; }
+.no-sidebar .sidebar { display: none !important; }
 
-/* Sidebar */
 .sidebar { padding: 30px; border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; }
 .nav-menu { margin-top: 40px; display: flex; flex-direction: column; gap: 8px; }
 .nav-item {
@@ -53,11 +71,9 @@ body {
 }
 .nav-item.active { background: var(--glass-bg); color: #fff; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); }
 
-/* Main Content */
 .main-content { padding: 40px; width: 100%; max-width: 1200px; margin: 0 auto; }
 .view-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; }
 
-/* Clock Card */
 .clock-card {
   text-align: center;
   padding: 60px 40px;
@@ -67,17 +83,13 @@ body {
 .dashboard-time { font-size: 6rem; font-weight: 800; line-height: 1; letter-spacing: -2px; }
 .dashboard-date { font-size: 1.2rem; color: var(--text-muted); letter-spacing: 2px; margin-top: 20px; }
 
-/* Mobile Optimizations */
 @media (max-width: 768px) {
   .app-layout { grid-template-columns: 1fr; }
   .sidebar { display: none; }
   .main-content { padding: 20px; }
   .dashboard-time { font-size: 4rem; }
-  .timer-view-container { margin: 20px auto !important; padding: 20px !important; }
-  #faceClock { font-size: 3.5rem !important; }
 }
 
-/* Timer UI */
 .pulse-emerald { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
@@ -95,7 +107,6 @@ body {
 .btn { padding: 12px 24px; border-radius: var(--radius-md); border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
 .btn.primary { background: var(--accent-primary); color: #fff; }
 .btn.outline { background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--glass-border); }
-.btn:active { transform: scale(0.98); }
 
 .hidden { display: none !important; }
 
