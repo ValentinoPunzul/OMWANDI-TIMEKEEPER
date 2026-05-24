@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CHRONOS FLOW - ROLE-BASED ACTIVE SESSIONS CLIENT
+   CHRONOS FLOW - PREMIUM ACTIVE SESSIONS CLIENT
    ========================================================================== */
 
 const state = {
@@ -11,7 +11,7 @@ const state = {
   isOnline: navigator.onLine,
   employeeSortField: 'emp_no',
   employeeSortDir: 'asc',
-  userRole: 'Employee' // Default
+  userRole: 'Employee'
 };
 
 const API_BASE = window.location.origin;
@@ -28,20 +28,16 @@ window.addEventListener('DOMContentLoaded', () => {
 function checkAuth() {
     const loginOverlay = document.getElementById('loginOverlay');
     const appLayout = document.getElementById('appLayout');
-    
     if (state.activeProfileId) {
         const me = state.employees.find(e => e.id === state.activeProfileId);
         if (me) {
             state.userRole = me.access_role || 'Employee';
-            
             document.getElementById('activeName').textContent = me.name;
             document.getElementById('activeRole').textContent = me.designation || 'Staff';
             const avatarEl = document.getElementById('activeAvatar');
             avatarEl.textContent = me.avatar || '??';
             avatarEl.style.background = me.color || '#6366f1';
-            
             updateSidebarVisibility(state.userRole);
-            
             if (loginOverlay) loginOverlay.classList.add('hidden');
             if (appLayout) appLayout.classList.remove('hidden');
             switchView(state.activeView);
@@ -53,10 +49,6 @@ function checkAuth() {
 }
 
 function updateSidebarVisibility(role) {
-    const isAdmin = role === 'Administrator';
-    const isEditor = role === 'Editor';
-    
-    // Employee can ONLY see Live Timer
     if (role === 'Employee') {
         document.getElementById('nav-dashboard').classList.add('hidden');
         document.getElementById('nav-projects').classList.add('hidden');
@@ -70,11 +62,6 @@ function updateSidebarVisibility(role) {
         document.getElementById('nav-team').classList.remove('hidden');
         document.getElementById('nav-timesheets').classList.remove('hidden');
         document.getElementById('nav-settings').classList.remove('hidden');
-    }
-    
-    // Settings logic for Editor vs Admin
-    if (isEditor) {
-        // Editor can see settings but we will restrict certain buttons in renderSettings
     }
 }
 
@@ -104,11 +91,12 @@ function startDashboardClock() {
     setInterval(() => {
         const timeEl = document.getElementById('dashboardTime');
         const dateEl = document.getElementById('dashboardDate');
-        if (timeEl && dateEl) {
-            const now = new Date();
-            timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-            dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
-        }
+        const faceClock = document.getElementById('faceClock');
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+        if (timeEl) timeEl.textContent = timeStr;
+        if (faceClock) faceClock.textContent = timeStr;
+        if (dateEl) dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
     }, 1000);
 }
 
@@ -117,7 +105,6 @@ function switchView(viewName) {
   document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.getAttribute('data-view') === viewName));
   const container = document.getElementById('mainContent');
   if (!container) return;
-
   switch(viewName) {
     case 'dashboard': renderDashboard(container); break;
     case 'timer': renderTimer(container); break;
@@ -136,11 +123,8 @@ function renderDashboard(container) {
         grouped[timer.project_id].push(timer);
     });
 
-    let activeTimersHtml = '';
-    if (activeTimers.length === 0) {
-        activeTimersHtml = `<div style="text-align:center; color:var(--text-muted); padding:40px;">No active sessions currently running.</div>`;
-    } else {
-        activeTimersHtml = Object.entries(grouped).map(([projectId, timers]) => {
+    let activeTimersHtml = activeTimers.length === 0 ? `<div style="text-align:center; color:var(--text-muted); padding:40px;">No active sessions currently running.</div>` : 
+        Object.entries(grouped).map(([projectId, timers]) => {
             const project = state.projects.find(p => p.id === projectId) || { name: 'Internal', color: '#6366f1' };
             const timersList = timers.map(t => {
                 const emp = state.employees.find(e => e.id === t.employee_id) || { name: 'Unknown', avatar: '??', color: '#888' };
@@ -149,25 +133,11 @@ function renderDashboard(container) {
                 const h = Math.floor(diff / 3600).toString().padStart(2, '0');
                 const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
                 const s = (diff % 60).toString().padStart(2, '0');
-                
-                const stopBtn = (state.userRole === 'Administrator' || state.userRole === 'Editor') 
-                    ? `<button class="btn-text" style="color:#ef4444; font-weight:700;" onclick="stopUserTimer('${t.id}')">STOP</button>` 
-                    : '';
-
-                return `
-                    <div class="timer-card glass-panel">
-                        <div class="timer-avatar" style="background:${emp.color || '#888'}">${emp.avatar || '??'}</div>
-                        <div class="timer-user-info">
-                            <div class="timer-user-name">${emp.name}</div>
-                            <div class="timer-task-name">${t.task || 'Development'}</div>
-                        </div>
-                        <div class="timer-counter" style="margin-right:15px;">${h}:${m}:${s}</div>
-                        ${stopBtn}
-                    </div>`;
+                const stopBtn = (state.userRole === 'Administrator' || state.userRole === 'Editor') ? `<button class="btn-text" style="color:#ef4444; font-weight:700;" onclick="stopUserTimer('${t.id}')">STOP</button>` : '';
+                return `<div class="timer-card glass-panel"><div class="timer-avatar" style="background:${emp.color || '#888'}">${emp.avatar || '??'}</div><div class="timer-user-info"><div class="timer-user-name">${emp.name}</div><div class="timer-task-name">${t.task || 'Development'}</div></div><div class="timer-counter" style="margin-right:15px;">${h}:${m}:${s}</div>${stopBtn}</div>`;
             }).join('');
             return `<div class="project-group"><div class="project-header"><span class="project-dot" style="background:${project.color}"></span>${project.name}</div><div class="timers-grid">${timersList}</div></div>`;
         }).join('');
-    }
 
     container.innerHTML = `<div class="dashboard-container"><div class="clock-card glass-container"><div class="dashboard-time" id="dashboardTime">00:00:00</div><div class="dashboard-date" id="dashboardDate">LOADING...</div></div><div class="active-timers-section"><div class="section-label"><span class="pulse-emerald"></span>ACTIVE PROJECT SESSIONS</div>${activeTimersHtml}</div></div>`;
 }
@@ -176,17 +146,38 @@ async function stopUserTimer(id) {
     if (!confirm('Stop this timer?')) return;
     const entry = state.timeEntries.find(e => e.id === id);
     if (!entry) return;
-    const start = new Date(entry.start_time);
-    const end = new Date();
-    const hours = Math.abs(end - start) / 36e5;
-    await apiRequest(`/api/entries/${id}`, { method: 'PUT', body: JSON.stringify({ end_time: end.toISOString(), total_hours: parseFloat(hours.toFixed(2)) }) });
+    const hours = Math.abs(new Date() - new Date(entry.start_time)) / 36e5;
+    await apiRequest(`/api/entries/${id}`, { method: 'PUT', body: JSON.stringify({ end_time: new Date().toISOString(), total_hours: parseFloat(hours.toFixed(2)) }) });
     await initializeState();
-    renderDashboard(document.getElementById('mainContent'));
+    if (state.activeView === 'dashboard') renderDashboard(document.getElementById('mainContent'));
+    else if (state.activeView === 'timer') renderTimer(document.getElementById('mainContent'));
 }
 
 function renderTimer(container) {
-    const projectOptions = state.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    container.innerHTML = `<div class="view-header"><h2>Live Tracker</h2></div><div class="timer-view-container glass-container" style="max-width:500px; margin: 0 auto; text-align:center;"><div class="timer-face" style="font-size:4rem; font-weight:800; margin-bottom:30px;">00:00:00</div><select id="timerProjectSelect" class="nav-item" style="width:100%; margin-bottom:20px; background:rgba(255,255,255,0.05); color:#fff;">${projectOptions}</select><button class="btn primary" style="width:100%; padding:16px;" onclick="startTimer()">START SESSION</button></div>`;
+    const myActiveEntry = state.timeEntries.find(e => e.employee_id === state.activeProfileId && (e.total_hours === 0 || !e.end_time));
+    const projectOptions = state.projects.map(p => `<option value="${p.id}" ${myActiveEntry?.project_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('');
+    
+    let actionBtn = '';
+    if (myActiveEntry) {
+        actionBtn = `<button class="btn" style="width:100%; padding:20px; background:#ef4444; color:#fff; font-size:1.2rem; font-weight:800; border-radius:12px;" onclick="stopUserTimer('${myActiveEntry.id}')">STOP SESSION</button>`;
+    } else {
+        actionBtn = `<button class="btn primary" style="width:100%; padding:20px; font-size:1.2rem; font-weight:800; border-radius:12px;" onclick="startTimer()">START SESSION</button>`;
+    }
+
+    container.innerHTML = `
+        <div class="view-header"><h2>Live Tracker</h2></div>
+        <div class="timer-view-container glass-container" style="max-width:500px; margin: 40px auto; text-align:center;">
+             <div id="faceClock" style="font-size:5rem; font-weight:800; margin-bottom:10px; font-family:monospace;">00:00:00</div>
+             <div style="margin-bottom:30px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                ${myActiveEntry ? '<span class="pulse-emerald" style="width:10px; height:10px;"></span> <span style="color:#10b981; font-weight:700; font-size:0.8rem; letter-spacing:1px;">LIVE SESSION ACTIVE</span>' : '<span style="color:var(--text-muted); font-size:0.8rem;">READY TO TRACK</span>'}
+             </div>
+            <div style="text-align:left; margin-bottom:20px;">
+                <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:800; display:block; margin-bottom:8px;">Project Selection</label>
+                <select id="timerProjectSelect" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); color:#fff; border:1px solid var(--glass-border); border-radius:8px;" ${myActiveEntry ? 'disabled' : ''}>${projectOptions}</select>
+            </div>
+            ${actionBtn}
+        </div>
+    `;
 }
 
 async function startTimer() {
@@ -194,7 +185,7 @@ async function startTimer() {
     const entry = { employee_id: state.activeProfileId, project_id: pid, task: 'Development', description: 'Track Log', start_time: new Date().toISOString(), total_hours: 0 };
     await apiRequest('/api/entries', { method: 'POST', body: JSON.stringify(entry) });
     await initializeState();
-    switchView('dashboard');
+    renderTimer(document.getElementById('mainContent'));
 }
 
 function renderProjects(container) {
@@ -209,32 +200,8 @@ function renderTeam(container) {
 
 function renderTimesheets(container) {
     const canEdit = state.userRole === 'Administrator' || state.userRole === 'Editor';
-    const rowsHtml = state.timeEntries.map(e => `
-        <tr style="border-bottom:1px solid var(--glass-border);">
-            <td>${e.start_time.split('T')[0]}</td>
-            <td>${e.employee_name || 'User'}</td>
-            <td>${e.project_name || 'Project'}</td>
-            <td>${(e.total_hours || 0).toFixed(1)} h</td>
-            ${canEdit ? `<td style="text-align:right;">
-                <button class="btn-text" style="color:var(--accent-primary);" onclick="editTimesheetEntry('${e.id}')">Edit</button>
-                <button class="btn-text" style="color:#ef4444; margin-left:10px;" onclick="deleteTimesheetEntry('${e.id}')">Del</button>
-            </td>` : '<td></td>'}
-        </tr>`).join('');
-    
-    container.innerHTML = `
-        <div class="view-header"><h2>Timesheets</h2></div>
-        <div id="timesheetEditForm" class="glass-container hidden" style="margin-bottom:20px;">
-            <h3>Edit Entry</h3>
-            <input type="hidden" id="editEntryId">
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-top:15px;">
-                <div><label style="font-size:0.7rem; opacity:0.7;">HOURS</label><input type="number" step="0.1" id="editEntryHours" class="form-control" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff;"></div>
-                <div><label style="font-size:0.7rem; opacity:0.7;">TASK</label><input type="text" id="editEntryTask" class="form-control" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff;"></div>
-                <div style="display:flex; align-items:flex-end; gap:10px;"><button class="btn primary" onclick="saveTimesheetEdit()">Save</button><button class="btn outline" onclick="document.getElementById('timesheetEditForm').classList.add('hidden')">Cancel</button></div>
-            </div>
-        </div>
-        <div class="glass-container">
-            <table><thead><tr><th>Date</th><th>Member</th><th>Project</th><th>Hours</th><th style="text-align:right;">Actions</th></tr></thead><tbody>${rowsHtml}</tbody></table>
-        </div>`;
+    const rowsHtml = state.timeEntries.map(e => `<tr style="border-bottom:1px solid var(--glass-border);"><td>${e.start_time.split('T')[0]}</td><td>${e.employee_name || 'User'}</td><td>${e.project_name || 'Project'}</td><td>${(e.total_hours || 0).toFixed(1)} h</td>${canEdit ? `<td style="text-align:right;"><button class="btn-text" style="color:var(--accent-primary);" onclick="editTimesheetEntry('${e.id}')">Edit</button><button class="btn-text" style="color:#ef4444; margin-left:10px;" onclick="deleteTimesheetEntry('${e.id}')">Del</button></td>` : '<td></td>'}</tr>`).join('');
+    container.innerHTML = `<div class="view-header"><h2>Timesheets</h2></div><div id="timesheetEditForm" class="glass-container hidden" style="margin-bottom:20px;"><h3>Edit Entry</h3><input type="hidden" id="editEntryId"><div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-top:15px;"><div><label style="font-size:0.7rem; opacity:0.7;">HOURS</label><input type="number" step="0.1" id="editEntryHours" class="form-control" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff;"></div><div><label style="font-size:0.7rem; opacity:0.7;">TASK</label><input type="text" id="editEntryTask" class="form-control" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff;"></div><div style="display:flex; align-items:flex-end; gap:10px;"><button class="btn primary" onclick="saveTimesheetEdit()">Save</button><button class="btn outline" onclick="document.getElementById('timesheetEditForm').classList.add('hidden')">Cancel</button></div></div></div><div class="glass-container"><table><thead><tr><th>Date</th><th>Member</th><th>Project</th><th>Hours</th><th style="text-align:right;">Actions</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
 }
 
 window.editTimesheetEntry = (id) => {
@@ -265,8 +232,6 @@ window.deleteTimesheetEntry = async (id) => {
 
 function renderSettings(container) {
     const isAdmin = state.userRole === 'Administrator';
-    const isEditor = state.userRole === 'Editor';
-    
     const sortedEmployees = [...state.employees].sort((a, b) => {
         let valA = a[state.employeeSortField] || '';
         let valB = b[state.employeeSortField] || '';
@@ -276,81 +241,8 @@ function renderSettings(container) {
         if (valA > valB) return state.employeeSortDir === 'asc' ? 1 : -1;
         return 0;
     });
-
-    const getSortIcon = (field) => state.employeeSortField !== field ? '↕️' : (state.employeeSortDir === 'asc' ? '🔼' : '🔽');
-
-    container.innerHTML = `
-        <div class="view-header"><h2>Settings</h2></div>
-        
-        <div class="glass-container" style="margin-bottom:24px;">
-            <h3 id="userFormTitle">User Management</h3>
-            <div id="userFormContainer" class="settings-form" style="margin-top:20px;">
-                <input type="hidden" id="userId">
-                
-                <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Employee Number</label><input type="text" id="userEmpNo" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
-                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Full Name</label><input type="text" id="userName" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
-                </div>
-
-                <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Designation</label><input type="text" id="userDesignation" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
-                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Department</label><input type="text" id="userDepartment" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
-                </div>
-
-                <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Access Role</label>
-                        <select id="userAccessRole" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;">
-                            <option value="Employee">Employee</option>
-                            <option value="Editor">Editor</option>
-                            <option value="Administrator">Administrator</option>
-                        </select>
-                    </div>
-                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Reports To</label><input type="text" id="userReportsTo" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
-                </div>
-
-                <div class="form-row" style="display:grid; grid-template-columns: 1fr 44px; gap:16px; margin-bottom:16px;">
-                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Avatar URL</label><input type="text" id="userAvatarUrl" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
-                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Color</label><input type="color" id="userColor" value="#6366f1" style="height:40px; width:44px; border:none; background:none; padding:0; cursor:pointer;"></div>
-                </div>
-
-                <div class="btn-group" style="display:flex; gap:12px; margin-top:10px;">
-                    <button class="btn primary" onclick="handleUserSubmit()">Save Employee</button>
-                    <button class="btn outline" onclick="resetUserForm()">Clear</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="glass-container" style="margin-bottom:24px;">
-            <h3>Employee List</h3>
-            <div style="overflow-x:auto;">
-                <table style="width:100%; margin-top:20px;">
-                    <thead>
-                        <tr style="text-align:left; color:var(--text-muted); font-size:0.8rem; cursor:pointer;">
-                            <th onclick="setEmployeeSort('emp_no')">No ${getSortIcon('emp_no')}</th>
-                            <th onclick="setEmployeeSort('name')">Name ${getSortIcon('name')}</th>
-                            <th onclick="setEmployeeSort('access_role')">Role ${getSortIcon('access_role')}</th>
-                            <th onclick="setEmployeeSort('department')">Dept ${getSortIcon('department')}</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>${sortedEmployees.map(e => `
-                        <tr style="border-bottom:1px solid var(--glass-border);">
-                            <td style="padding:12px 0;">${e.emp_no || ''}</td>
-                            <td>${e.name || ''}</td>
-                            <td>${e.access_role || 'Employee'}</td>
-                            <td>${e.department || ''}</td>
-                            <td>
-                                <button class="btn-text" style="color:var(--accent-primary);" onclick="editEmployee('${e.id}')">Edit</button>
-                                ${isAdmin ? `<button class="btn-text" style="color:#ef4444; margin-left:8px;" onclick="deleteEmployee('${e.id}')">Del</button>` : ''}
-                            </td>
-                        </tr>`).join('')}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        ${isAdmin ? `<div class="glass-container"><h3>System Actions</h3><button class="btn primary" style="margin-top:20px;" onclick="triggerHrDispatchFlow()">Dispatch HR Report (CSV)</button></div>` : ''}
-    `;
+    const getSortIcon = (f) => state.employeeSortField !== f ? '↕️' : (state.employeeSortDir === 'asc' ? '🔼' : '🔽');
+    container.innerHTML = `<div class="view-header"><h2>Settings</h2></div><div class="glass-container" style="margin-bottom:24px;"><h3 id="userFormTitle">User Management</h3><div id="userFormContainer" class="settings-form" style="margin-top:20px;"><input type="hidden" id="userId"><div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Employee Number</label><input type="text" id="userEmpNo" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Full Name</label><input type="text" id="userName" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div></div><div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Designation</label><input type="text" id="userDesignation" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Department</label><input type="text" id="userDepartment" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div></div><div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Access Role</label><select id="userAccessRole" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"><option value="Employee">Employee</option><option value="Editor">Editor</option><option value="Administrator">Administrator</option></select></div><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; opacity:0.7;">Reports To</label><input type="text" id="userReportsTo" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div></div><div class="form-row" style="display:grid; grid-template-columns: 1fr 44px; gap:16px; margin-bottom:16px;"><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Avatar URL</label><input type="text" id="userAvatarUrl" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div><div><label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Color</label><input type="color" id="userColor" value="#6366f1" style="height:44px; width:44px; border:none; background:none; padding:0; cursor:pointer;"></div></div><div class="btn-group" style="display:flex; gap:12px; margin-top:10px;"><button class="btn primary" onclick="handleUserSubmit()">Save Employee</button><button class="btn outline" onclick="resetUserForm()">Clear</button></div></div></div><div class="glass-container" style="margin-bottom:24px;"><h3>Employee List</h3><div style="overflow-x:auto;"><table style="width:100%; margin-top:20px;"><thead><tr style="text-align:left; color:var(--text-muted); font-size:0.8rem; cursor:pointer;"><th onclick="setEmployeeSort('emp_no')">No ${getSortIcon('emp_no')}</th><th onclick="setEmployeeSort('name')">Name ${getSortIcon('name')}</th><th onclick="setEmployeeSort('access_role')">Role ${getSortIcon('access_role')}</th><th onclick="setEmployeeSort('department')">Dept ${getSortIcon('department')}</th><th>Actions</th></tr></thead><tbody>${sortedEmployees.map(e => `<tr style="border-bottom:1px solid var(--glass-border);"><td style="padding:12px 0;">${e.emp_no || ''}</td><td>${e.name || ''}</td><td>${e.access_role || 'Employee'}</td><td>${e.department || ''}</td><td><button class="btn-text" style="color:var(--accent-primary);" onclick="editEmployee('${e.id}')">Edit</button>${isAdmin ? `<button class="btn-text" style="color:#ef4444; margin-left:8px;" onclick="deleteEmployee('${e.id}')">Del</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div>${isAdmin ? `<div class="glass-container"><h3>System Actions</h3><button class="btn primary" style="margin-top:20px;" onclick="triggerHrDispatchFlow()">Dispatch HR Report (CSV)</button></div>` : ''}`;
 }
 
 window.setEmployeeSort = (field) => {
@@ -362,23 +254,11 @@ window.setEmployeeSort = (field) => {
 async function handleUserSubmit() {
     const name = document.getElementById('userName').value;
     if(!name) return alert('Name is required');
-    const userData = {
-        emp_no: document.getElementById('userEmpNo').value,
-        name: name,
-        designation: document.getElementById('userDesignation').value,
-        department: document.getElementById('userDepartment').value,
-        access_role: document.getElementById('userAccessRole').value,
-        reports_to: document.getElementById('userReportsTo').value,
-        avatar_url: document.getElementById('userAvatarUrl').value,
-        color: document.getElementById('userColor').value,
-        avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    };
+    const userData = { emp_no: document.getElementById('userEmpNo').value, name: name, designation: document.getElementById('userDesignation').value, department: document.getElementById('userDepartment').value, access_role: document.getElementById('userAccessRole').value, reports_to: document.getElementById('userReportsTo').value, avatar_url: document.getElementById('userAvatarUrl').value, color: document.getElementById('userColor').value, avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) };
     const id = document.getElementById('userId').value;
     if (id) await apiRequest(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(userData) });
     else await apiRequest('/api/employees', { method: 'POST', body: JSON.stringify(userData) });
-    await initializeState();
-    renderSettings(document.getElementById('mainContent'));
-    checkAuth(); 
+    await initializeState(); renderSettings(document.getElementById('mainContent')); checkAuth(); 
 }
 
 window.editEmployee = (id) => {
@@ -405,23 +285,10 @@ window.deleteEmployee = async (id) => {
 };
 
 window.resetUserForm = () => {
-    document.getElementById('userId').value = '';
-    document.getElementById('userEmpNo').value = '';
-    document.getElementById('userName').value = '';
-    document.getElementById('userDesignation').value = '';
-    document.getElementById('userDepartment').value = '';
-    document.getElementById('userAccessRole').value = 'Employee';
-    document.getElementById('userReportsTo').value = '';
-    document.getElementById('userAvatarUrl').value = '';
-    document.getElementById('userColor').value = '#6366f1';
-    document.getElementById('userFormTitle').textContent = 'User Management';
+    document.getElementById('userId').value = ''; document.getElementById('userEmpNo').value = ''; document.getElementById('userName').value = ''; document.getElementById('userDesignation').value = ''; document.getElementById('userDepartment').value = ''; document.getElementById('userAccessRole').value = 'Employee'; document.getElementById('userReportsTo').value = ''; document.getElementById('userAvatarUrl').value = ''; document.getElementById('userColor').value = '#6366f1'; document.getElementById('userFormTitle').textContent = 'User Management';
 };
 
-async function triggerHrDispatchFlow() {
-  const res = await apiRequest('/api/hr/dispatch', { method: 'POST' });
-  alert(`Report generated: ${res.filename}`);
-}
-
+async function triggerHrDispatchFlow() { const res = await apiRequest('/api/hr/dispatch', { method: 'POST' }); alert(`Report generated: ${res.filename}`); }
 function handleLogout() { state.activeProfileId = null; localStorage.removeItem('chronos_user_id'); checkAuth(); }
 
 function setupGlobalEventListeners() {
