@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CHRONOS FLOW - COMMAND CENTER CLIENT
+   CHRONOS FLOW - ACTIVE SESSIONS CLIENT
    ========================================================================== */
 
 const state = {
@@ -8,8 +8,7 @@ const state = {
   timeEntries: [],
   activeProfileId: localStorage.getItem('chronos_user_id') || null, 
   activeView: 'dashboard',
-  isOnline: navigator.onLine,
-  activeTimer: { running: false, startTime: null, secondsElapsed: 0, projectId: '', task: 'Development', description: '', intervalId: null }
+  isOnline: navigator.onLine
 };
 
 const API_BASE = window.location.origin;
@@ -19,6 +18,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initializeState().then(() => {
     setupGlobalEventListeners();
     checkAuth();
+    startDashboardClock();
   });
 });
 
@@ -26,12 +26,12 @@ function checkAuth() {
     const loginOverlay = document.getElementById('loginOverlay');
     const appLayout = document.getElementById('appLayout');
     if (state.activeProfileId) {
-        loginOverlay.classList.add('hidden');
-        appLayout.classList.remove('hidden');
+        if (loginOverlay) loginOverlay.classList.add('hidden');
+        if (appLayout) appLayout.classList.remove('hidden');
         switchView(state.activeView);
     } else {
-        loginOverlay.classList.remove('hidden');
-        appLayout.classList.add('hidden');
+        if (loginOverlay) loginOverlay.classList.remove('hidden');
+        if (appLayout) appLayout.classList.add('hidden');
     }
 }
 
@@ -57,6 +57,18 @@ async function apiRequest(endpoint, options = {}) {
   return await res.json();
 }
 
+function startDashboardClock() {
+    setInterval(() => {
+        const timeEl = document.getElementById('dashboardTime');
+        const dateEl = document.getElementById('dashboardDate');
+        if (timeEl && dateEl) {
+            const now = new Date();
+            timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
+        }
+    }, 1000);
+}
+
 function switchView(viewName) {
   state.activeView = viewName;
   document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.getAttribute('data-view') === viewName));
@@ -74,112 +86,100 @@ function switchView(viewName) {
 }
 
 function renderDashboard(container) {
-    const me = state.employees.find(e => e.id === state.activeProfileId) || {};
-    const myEntries = state.timeEntries.filter(e => e.employee_id === state.activeProfileId);
-    const totalHours = myEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-    const recentActivities = state.timeEntries.slice(0, 5);
+    const activeTimers = state.timeEntries.filter(e => !e.end_time || e.total_hours === 0);
+    const grouped = {};
+    activeTimers.forEach(timer => {
+        if (!grouped[timer.project_id]) grouped[timer.project_id] = [];
+        grouped[timer.project_id].push(timer);
+    });
+
+    let activeTimersHtml = '';
+    if (activeTimers.length === 0) {
+        activeTimersHtml = `<div style="text-align:center; color:var(--text-muted); padding:40px;">No active sessions currently running.</div>`;
+    } else {
+        activeTimersHtml = Object.entries(grouped).map(([projectId, timers]) => {
+            const project = state.projects.find(p => p.id === projectId) || { name: 'Internal', color: '#6366f1' };
+            const timersList = timers.map(t => {
+                const emp = state.employees.find(e => e.id === t.employee_id) || { name: 'Unknown', avatar: '??', color: '#888' };
+                const start = new Date(t.start_time);
+                const diff = Math.floor((new Date() - start) / 1000);
+                const h = Math.floor(diff / 3600).toString().padStart(2, '0');
+                const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+                const s = (diff % 60).toString().padStart(2, '0');
+                
+                return `
+                    <div class="timer-card glass-panel">
+                        <div class="timer-avatar" style="background:${emp.color}">${emp.avatar}</div>
+                        <div class="timer-user-info">
+                            <div class="timer-user-name">${emp.name}</div>
+                            <div class="timer-task-name">${t.task || 'Development'}</div>
+                        </div>
+                        <div class="timer-counter">${h}:${m}:${s}</div>
+                    </div>`;
+            }).join('');
+
+            return `
+                <div class="project-group">
+                    <div class="project-header"><span class="project-dot" style="background:${project.color}"></span>${project.name}</div>
+                    <div class="timers-grid">${timersList}</div>
+                </div>`;
+        }).join('');
+    }
 
     container.innerHTML = `
-        <div class="command-center">
-            <header class="view-header">
-                <div class="header-main">
-                    <h2>Chronos Command Center</h2>
-                    <p>Aesthetic performance tracker for assigned enterprise assets.</p>
-                </div>
-                <button class="btn primary" onclick="switchView('timer')">+ Log Hours</button>
-            </header>
-
-            <div class="stats-grid">
-                <div class="stat-card glass-container">
-                    <div class="stat-label">YOUR TOTAL HOURS <span class="icon">$</span></div>
-                    <div class="stat-value">${totalHours.toFixed(1)} hrs</div>
-                    <div class="stat-sub">Cumulative track record</div>
-                </div>
-                <div class="stat-card glass-container">
-                    <div class="stat-label">WEEKLY TARGET (7D) <span class="icon">📅</span></div>
-                    <div class="stat-value">1.0 hrs</div>
-                    <div class="stat-sub">34.0h remaining</div>
-                </div>
-                <div class="stat-card glass-container">
-                    <div class="stat-label">BUDGET ALERTS <span class="icon">⚠️</span></div>
-                    <div class="stat-value">0 Caps</div>
-                    <div class="stat-sub">All project budgets stable</div>
-                </div>
+        <div class="dashboard-container">
+            <div class="clock-card glass-container">
+                <div class="dashboard-time" id="dashboardTime">00:00:00</div>
+                <div class="dashboard-date" id="dashboardDate">LOADING...</div>
             </div>
-
-            <div class="dashboard-main-grid">
-                <div class="activities-section glass-container">
-                    <div class="section-header">
-                        <h3>Your Recent Activities</h3>
-                        <button class="btn-text" onclick="switchView('timesheets')">View All</button>
-                    </div>
-                    <div class="activity-list">
-                        ${recentActivities.map(a => {
-                            const proj = state.projects.find(p => p.id === a.project_id) || { name: 'Internal' };
-                            return `
-                                <div class="activity-item">
-                                    <div class="activity-dot" style="background:${proj.color || '#6366f1'}">${proj.name[0]}</div>
-                                    <div class="activity-info">
-                                        <div class="activity-task">${a.task}</div>
-                                        <div class="activity-meta">${proj.name} • ${a.description || 'No description'}</div>
-                                    </div>
-                                    <div class="activity-hours">
-                                        <div class="hours-val">+${a.total_hours.toFixed(1)}h</div>
-                                        <div class="hours-date">Today at ${new Date(a.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-
-                <div class="allocation-section glass-container">
-                    <h3>Project Allocation</h3>
-                    <div class="chart-placeholder">
-                        <div class="donut-ring"></div>
-                        <div class="donut-labels">
-                            ${state.projects.slice(0, 4).map(p => `
-                                <div class="allocation-row">
-                                    <span class="color-dot" style="background:${p.color}"></span>
-                                    <span class="label">${p.name}</span>
-                                    <span class="val">0.0h (0%)</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
+            <div class="active-timers-section">
+                <div class="section-label"><span class="pulse-emerald"></span>ACTIVE PROJECT SESSIONS</div>
+                ${activeTimersHtml}
             </div>
-        </div>
-    `;
+        </div>`;
 }
-
-// ... [Existing view functions: renderTimer, renderProjects, etc., updated to match new style] ...
 
 function renderTimer(container) {
     const projectOptions = state.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
     container.innerHTML = `
         <div class="view-header"><h2>Live Tracker</h2></div>
-        <div class="timer-view-container glass-container" style="max-width:500px; margin: 0 auto; text-align:center; padding:40px;">
-            <div class="timer-face" style="font-size:4rem; font-weight:800; margin-bottom:30px;">00:00:00</div>
-            <select id="timerProjectSelect" class="form-control" style="margin-bottom:20px;">${projectOptions}</select>
-            <button class="btn primary big" style="width:100%; padding:20px;" onclick="startTimer()">START SESSION</button>
+        <div class="timer-view-container glass-container" style="max-width:500px; margin: 0 auto; text-align:center;">
+             <div class="timer-face" style="font-size:4rem; font-weight:800; margin-bottom:30px;">00:00:00</div>
+            <select id="timerProjectSelect" class="nav-item" style="width:100%; margin-bottom:20px; background:rgba(255,255,255,0.05); color:#fff;">${projectOptions}</select>
+            <button class="btn primary" style="width:100%; padding:16px;" onclick="startTimer()">START SESSION</button>
         </div>
     `;
 }
 
 async function startTimer() {
     const pid = document.getElementById('timerProjectSelect').value;
-    const entry = { 
-        employee_id: state.activeProfileId, 
-        project_id: pid, 
-        task: 'Development', 
-        description: 'Tracked Session', 
-        start_time: new Date().toISOString(), 
-        total_hours: 1.0 // Mocking 1h for demo purposes as per screenshot
-    };
+    const entry = { employee_id: state.activeProfileId, project_id: pid, task: 'Development', description: 'Track Log', start_time: new Date().toISOString(), total_hours: 0 };
     await apiRequest('/api/entries', { method: 'POST', body: JSON.stringify(entry) });
     await initializeState();
     switchView('dashboard');
+}
+
+function renderProjects(container) {
+    const html = state.projects.map(p => `<div class="glass-container" style="margin-bottom:16px;"><h3>${p.name}</h3><p style="color:var(--text-muted)">${p.client}</p></div>`).join('');
+    container.innerHTML = `<div class="view-header"><h2>Projects</h2></div><div class="projects-grid">${html}</div>`;
+}
+
+function renderTeam(container) {
+    const html = state.employees.map(e => `
+        <div class="timer-card glass-panel" style="margin-bottom:10px;">
+            <div class="timer-avatar" style="background:${e.color}">${e.avatar}</div>
+            <div class="timer-user-info">
+                <div class="timer-user-name">${e.name}</div>
+                <div class="timer-task-name">${e.role}</div>
+            </div>
+        </div>
+    `).join('');
+    container.innerHTML = `<div class="view-header"><h2>Team</h2></div>${html}`;
+}
+
+function renderTimesheets(container) {
+    const rowsHtml = state.timeEntries.map(e => `<tr><td>${e.start_time.split('T')[0]}</td><td>${e.employee_name || 'User'}</td><td>${e.project_name || 'Project'}</td><td>${(e.total_hours || 0).toFixed(1)}</td></tr>`).join('');
+    container.innerHTML = `<div class="view-header"><h2>Timesheets</h2></div><div class="glass-container"><table><thead><tr><th>Date</th><th>Member</th><th>Project</th><th>Hours</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
 }
 
 function renderSettings(container) {
@@ -187,7 +187,6 @@ function renderSettings(container) {
         <div class="view-header"><h2>Settings</h2></div>
         <div class="glass-container">
             <button class="btn primary" onclick="triggerHrDispatchFlow()">Dispatch HR Report (CSV)</button>
-            <p style="margin-top:20px; color:var(--text-muted);">This will compile all time entries into the standardized HR format and save it to the server.</p>
         </div>
     `;
 }
