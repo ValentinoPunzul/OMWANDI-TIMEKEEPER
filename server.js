@@ -15,24 +15,18 @@ function initializeFirebase() {
       serviceAccount = typeof saEnvVar === 'string' ? JSON.parse(saEnvVar) : saEnvVar;
     } catch (e) { console.error('Firebase: Error parsing Secret:', e.message); }
   }
-  
   if (!serviceAccount) {
     const localPath = path.join(__dirname, 'firebase-service-account.json');
     if (fs.existsSync(localPath)) serviceAccount = require(localPath);
   }
-
-  // Use environment variable for DB URL, or fallback to the current one
   const dbUrl = process.env.FIREBASE_DATABASE_URL || "https://omwandi-timekeeping-default-rtdb.firebaseio.com";
-
   try {
     const config = { databaseURL: dbUrl };
     if (serviceAccount) {
       config.credential = admin.credential.cert(serviceAccount);
       admin.initializeApp(config);
-      console.log(`Firebase: Initialized with Service Account for ${dbUrl}`);
     } else {
       admin.initializeApp(config);
-      console.log(`Firebase: Initialized with Default Credentials for ${dbUrl}`);
     }
   } catch (error) { console.error('Firebase: Init Failed:', error.message); }
 }
@@ -49,8 +43,7 @@ const checkDb = (req, res, next) => {
   next();
 };
 
-// ... [Existing API Routes remain exactly the same] ...
-
+// --- Employees ---
 app.get('/api/employees', checkDb, async (req, res) => {
   try {
     const snap = await db.ref('employees').once('value');
@@ -75,6 +68,7 @@ app.delete('/api/employees/:id', checkDb, async (req, res) => {
   res.json({ success: true });
 });
 
+// --- Projects ---
 app.get('/api/projects', checkDb, async (req, res) => {
   try {
     const snap = await db.ref('projects').once('value');
@@ -82,12 +76,14 @@ app.get('/api/projects', checkDb, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- Time Entries ---
 app.get('/api/entries', checkDb, async (req, res) => {
   try {
     const snap = await db.ref('time_entries').once('value');
     const entries = Object.values(snap.val() || {});
     const emps = (await db.ref('employees').once('value')).val() || {};
     const projs = (await db.ref('projects').once('value')).val() || {};
+
     const hydrated = entries.map(e => ({
       ...e,
       employee_name: emps[e.employee_id]?.name || 'Unknown',
@@ -104,6 +100,17 @@ app.post('/api/entries', checkDb, async (req, res) => {
   res.status(201).json(entry);
 });
 
+app.put('/api/entries/:id', checkDb, async (req, res) => {
+  await db.ref('time_entries/' + req.params.id).update(req.body);
+  res.json({ success: true });
+});
+
+app.delete('/api/entries/:id', checkDb, async (req, res) => {
+  await db.ref('time_entries/' + req.params.id).remove();
+  res.json({ success: true });
+});
+
+// --- HR Dispatch ---
 app.post('/api/hr/dispatch', checkDb, async (req, res) => {
   try {
     const entriesSnap = await db.ref('time_entries').once('value');

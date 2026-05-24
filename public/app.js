@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CHRONOS FLOW - PREMIUM ACTIVE SESSIONS CLIENT
+   CHRONOS FLOW - ROLE-BASED ACTIVE SESSIONS CLIENT
    ========================================================================== */
 
 const state = {
@@ -10,7 +10,8 @@ const state = {
   activeView: 'dashboard',
   isOnline: navigator.onLine,
   employeeSortField: 'emp_no',
-  employeeSortDir: 'asc'
+  employeeSortDir: 'asc',
+  userRole: 'Employee' // Default
 };
 
 const API_BASE = window.location.origin;
@@ -27,18 +28,20 @@ window.addEventListener('DOMContentLoaded', () => {
 function checkAuth() {
     const loginOverlay = document.getElementById('loginOverlay');
     const appLayout = document.getElementById('appLayout');
+    
     if (state.activeProfileId) {
         const me = state.employees.find(e => e.id === state.activeProfileId);
         if (me) {
-            const nameEl = document.getElementById('activeName');
-            const roleEl = document.getElementById('activeRole');
+            state.userRole = me.access_role || 'Employee';
+            
+            document.getElementById('activeName').textContent = me.name;
+            document.getElementById('activeRole').textContent = me.designation || 'Staff';
             const avatarEl = document.getElementById('activeAvatar');
-            if(nameEl) nameEl.textContent = me.name;
-            if(roleEl) roleEl.textContent = me.designation || me.role || 'Staff';
-            if(avatarEl) {
-                avatarEl.textContent = me.avatar || '??';
-                avatarEl.style.background = me.color || '#6366f1';
-            }
+            avatarEl.textContent = me.avatar || '??';
+            avatarEl.style.background = me.color || '#6366f1';
+            
+            updateSidebarVisibility(state.userRole);
+            
             if (loginOverlay) loginOverlay.classList.add('hidden');
             if (appLayout) appLayout.classList.remove('hidden');
             switchView(state.activeView);
@@ -46,6 +49,32 @@ function checkAuth() {
     } else {
         if (loginOverlay) loginOverlay.classList.remove('hidden');
         if (appLayout) appLayout.classList.add('hidden');
+    }
+}
+
+function updateSidebarVisibility(role) {
+    const isAdmin = role === 'Administrator';
+    const isEditor = role === 'Editor';
+    
+    // Employee can ONLY see Live Timer
+    if (role === 'Employee') {
+        document.getElementById('nav-dashboard').classList.add('hidden');
+        document.getElementById('nav-projects').classList.add('hidden');
+        document.getElementById('nav-team').classList.add('hidden');
+        document.getElementById('nav-timesheets').classList.add('hidden');
+        document.getElementById('nav-settings').classList.add('hidden');
+        state.activeView = 'timer';
+    } else {
+        document.getElementById('nav-dashboard').classList.remove('hidden');
+        document.getElementById('nav-projects').classList.remove('hidden');
+        document.getElementById('nav-team').classList.remove('hidden');
+        document.getElementById('nav-timesheets').classList.remove('hidden');
+        document.getElementById('nav-settings').classList.remove('hidden');
+    }
+    
+    // Settings logic for Editor vs Admin
+    if (isEditor) {
+        // Editor can see settings but we will restrict certain buttons in renderSettings
     }
 }
 
@@ -100,7 +129,7 @@ function switchView(viewName) {
 }
 
 function renderDashboard(container) {
-    const activeTimers = state.timeEntries.filter(e => !e.end_time || e.total_hours === 0);
+    const activeTimers = state.timeEntries.filter(e => e.total_hours === 0 || !e.end_time);
     const grouped = {};
     activeTimers.forEach(timer => {
         if (!grouped[timer.project_id]) grouped[timer.project_id] = [];
@@ -120,13 +149,39 @@ function renderDashboard(container) {
                 const h = Math.floor(diff / 3600).toString().padStart(2, '0');
                 const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
                 const s = (diff % 60).toString().padStart(2, '0');
-                return `<div class="timer-card glass-panel"><div class="timer-avatar" style="background:${emp.color || '#888'}">${emp.avatar || '??'}</div><div class="timer-user-info"><div class="timer-user-name">${emp.name}</div><div class="timer-task-name">${t.task || 'Development'}</div></div><div class="timer-counter">${h}:${m}:${s}</div></div>`;
+                
+                const stopBtn = (state.userRole === 'Administrator' || state.userRole === 'Editor') 
+                    ? `<button class="btn-text" style="color:#ef4444; font-weight:700;" onclick="stopUserTimer('${t.id}')">STOP</button>` 
+                    : '';
+
+                return `
+                    <div class="timer-card glass-panel">
+                        <div class="timer-avatar" style="background:${emp.color || '#888'}">${emp.avatar || '??'}</div>
+                        <div class="timer-user-info">
+                            <div class="timer-user-name">${emp.name}</div>
+                            <div class="timer-task-name">${t.task || 'Development'}</div>
+                        </div>
+                        <div class="timer-counter" style="margin-right:15px;">${h}:${m}:${s}</div>
+                        ${stopBtn}
+                    </div>`;
             }).join('');
             return `<div class="project-group"><div class="project-header"><span class="project-dot" style="background:${project.color}"></span>${project.name}</div><div class="timers-grid">${timersList}</div></div>`;
         }).join('');
     }
 
     container.innerHTML = `<div class="dashboard-container"><div class="clock-card glass-container"><div class="dashboard-time" id="dashboardTime">00:00:00</div><div class="dashboard-date" id="dashboardDate">LOADING...</div></div><div class="active-timers-section"><div class="section-label"><span class="pulse-emerald"></span>ACTIVE PROJECT SESSIONS</div>${activeTimersHtml}</div></div>`;
+}
+
+async function stopUserTimer(id) {
+    if (!confirm('Stop this timer?')) return;
+    const entry = state.timeEntries.find(e => e.id === id);
+    if (!entry) return;
+    const start = new Date(entry.start_time);
+    const end = new Date();
+    const hours = Math.abs(end - start) / 36e5;
+    await apiRequest(`/api/entries/${id}`, { method: 'PUT', body: JSON.stringify({ end_time: end.toISOString(), total_hours: parseFloat(hours.toFixed(2)) }) });
+    await initializeState();
+    renderDashboard(document.getElementById('mainContent'));
 }
 
 function renderTimer(container) {
@@ -148,35 +203,81 @@ function renderProjects(container) {
 }
 
 function renderTeam(container) {
-    const html = state.employees.map(e => `<div class="timer-card glass-panel" style="margin-bottom:10px;"><div class="timer-avatar" style="background:${e.color || '#888'}">${e.avatar || '??'}</div><div class="timer-user-info"><div class="timer-user-name">${e.name}</div><div class="timer-task-name">${e.designation || e.role || ''}</div></div></div>`).join('');
+    const html = state.employees.map(e => `<div class="timer-card glass-panel" style="margin-bottom:10px;"><div class="timer-avatar" style="background:${e.color || '#888'}">${e.avatar || '??'}</div><div class="timer-user-info"><div class="timer-user-name">${e.name}</div><div class="timer-task-name">${e.designation || ''}</div></div></div>`).join('');
     container.innerHTML = `<div class="view-header"><h2>Team</h2></div>${html}`;
 }
 
 function renderTimesheets(container) {
-    const rowsHtml = state.timeEntries.map(e => `<tr><td>${e.start_time.split('T')[0]}</td><td>${e.employee_name || 'User'}</td><td>${e.project_name || 'Project'}</td><td>${(e.total_hours || 0).toFixed(1)}</td></tr>`).join('');
-    container.innerHTML = `<div class="view-header"><h2>Timesheets</h2></div><div class="glass-container"><table><thead><tr><th>Date</th><th>Member</th><th>Project</th><th>Hours</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+    const canEdit = state.userRole === 'Administrator' || state.userRole === 'Editor';
+    const rowsHtml = state.timeEntries.map(e => `
+        <tr style="border-bottom:1px solid var(--glass-border);">
+            <td>${e.start_time.split('T')[0]}</td>
+            <td>${e.employee_name || 'User'}</td>
+            <td>${e.project_name || 'Project'}</td>
+            <td>${(e.total_hours || 0).toFixed(1)} h</td>
+            ${canEdit ? `<td style="text-align:right;">
+                <button class="btn-text" style="color:var(--accent-primary);" onclick="editTimesheetEntry('${e.id}')">Edit</button>
+                <button class="btn-text" style="color:#ef4444; margin-left:10px;" onclick="deleteTimesheetEntry('${e.id}')">Del</button>
+            </td>` : '<td></td>'}
+        </tr>`).join('');
+    
+    container.innerHTML = `
+        <div class="view-header"><h2>Timesheets</h2></div>
+        <div id="timesheetEditForm" class="glass-container hidden" style="margin-bottom:20px;">
+            <h3>Edit Entry</h3>
+            <input type="hidden" id="editEntryId">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-top:15px;">
+                <div><label style="font-size:0.7rem; opacity:0.7;">HOURS</label><input type="number" step="0.1" id="editEntryHours" class="form-control" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff;"></div>
+                <div><label style="font-size:0.7rem; opacity:0.7;">TASK</label><input type="text" id="editEntryTask" class="form-control" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff;"></div>
+                <div style="display:flex; align-items:flex-end; gap:10px;"><button class="btn primary" onclick="saveTimesheetEdit()">Save</button><button class="btn outline" onclick="document.getElementById('timesheetEditForm').classList.add('hidden')">Cancel</button></div>
+            </div>
+        </div>
+        <div class="glass-container">
+            <table><thead><tr><th>Date</th><th>Member</th><th>Project</th><th>Hours</th><th style="text-align:right;">Actions</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+        </div>`;
 }
 
+window.editTimesheetEntry = (id) => {
+    const entry = state.timeEntries.find(e => e.id === id);
+    if (!entry) return;
+    document.getElementById('editEntryId').value = entry.id;
+    document.getElementById('editEntryHours').value = entry.total_hours;
+    document.getElementById('editEntryTask').value = entry.task || 'Development';
+    document.getElementById('timesheetEditForm').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.saveTimesheetEdit = async () => {
+    const id = document.getElementById('editEntryId').value;
+    const hours = document.getElementById('editEntryHours').value;
+    const task = document.getElementById('editEntryTask').value;
+    await apiRequest(`/api/entries/${id}`, { method: 'PUT', body: JSON.stringify({ total_hours: parseFloat(hours), task: task }) });
+    await initializeState();
+    renderTimesheets(document.getElementById('mainContent'));
+};
+
+window.deleteTimesheetEntry = async (id) => {
+    if (!confirm('Delete entry?')) return;
+    await apiRequest(`/api/entries/${id}`, { method: 'DELETE' });
+    await initializeState();
+    renderTimesheets(document.getElementById('mainContent'));
+};
+
 function renderSettings(container) {
+    const isAdmin = state.userRole === 'Administrator';
+    const isEditor = state.userRole === 'Editor';
+    
     const sortedEmployees = [...state.employees].sort((a, b) => {
         let valA = a[state.employeeSortField] || '';
         let valB = b[state.employeeSortField] || '';
-        if (state.employeeSortField === 'emp_no') {
-            valA = parseInt(valA) || 0;
-            valB = parseInt(valB) || 0;
-        } else {
-            valA = valA.toString().toLowerCase();
-            valB = valB.toString().toLowerCase();
-        }
+        if (state.employeeSortField === 'emp_no') { valA = parseInt(valA) || 0; valB = parseInt(valB) || 0; }
+        else { valA = valA.toString().toLowerCase(); valB = valB.toString().toLowerCase(); }
         if (valA < valB) return state.employeeSortDir === 'asc' ? -1 : 1;
         if (valA > valB) return state.employeeSortDir === 'asc' ? 1 : -1;
         return 0;
     });
 
-    const getSortIcon = (field) => {
-        if (state.employeeSortField !== field) return '↕️';
-        return state.employeeSortDir === 'asc' ? '🔼' : '🔽';
-    };
+    const getSortIcon = (field) => state.employeeSortField !== field ? '↕️' : (state.employeeSortDir === 'asc' ? '🔼' : '🔽');
 
     container.innerHTML = `
         <div class="view-header"><h2>Settings</h2></div>
@@ -187,47 +288,29 @@ function renderSettings(container) {
                 <input type="hidden" id="userId">
                 
                 <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <div>
-                        <label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Employee Number</label>
-                        <input type="text" id="userEmpNo" placeholder="Employee Number" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;">
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Full Name</label>
-                        <input type="text" id="userName" placeholder="Full Name" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;">
-                    </div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Employee Number</label><input type="text" id="userEmpNo" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Full Name</label><input type="text" id="userName" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
                 </div>
 
                 <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <div>
-                        <label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Designation</label>
-                        <input type="text" id="userDesignation" placeholder="Designation" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;">
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Department</label>
-                        <input type="text" id="userDepartment" placeholder="Department" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;">
-                    </div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Designation</label><input type="text" id="userDesignation" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Department</label><input type="text" id="userDepartment" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
                 </div>
 
                 <div class="form-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <div>
-                        <label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Sub Department</label>
-                        <input type="text" id="userSubDepartment" placeholder="Sub Department" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;">
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Access Role</label>
+                        <select id="userAccessRole" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;">
+                            <option value="Employee">Employee</option>
+                            <option value="Editor">Editor</option>
+                            <option value="Administrator">Administrator</option>
+                        </select>
                     </div>
-                    <div>
-                        <label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Reports To</label>
-                        <input type="text" id="userReportsTo" placeholder="Reports To" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;">
-                    </div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Reports To</label><input type="text" id="userReportsTo" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
                 </div>
 
                 <div class="form-row" style="display:grid; grid-template-columns: 1fr 44px; gap:16px; margin-bottom:16px;">
-                    <div>
-                        <label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Avatar URL</label>
-                        <input type="text" id="userAvatarUrl" placeholder="Avatar URL" class="form-control" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:#fff; border-radius:6px;">
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:0.75rem; color:#fff; margin-bottom:6px; text-transform:uppercase; font-weight:800; letter-spacing:1px; opacity:0.7;">Color</label>
-                        <input type="color" id="userColor" value="#6366f1" style="height:44px; width:44px; border:none; background:none; padding:0; cursor:pointer;">
-                    </div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Avatar URL</label><input type="text" id="userAvatarUrl" class="form-control" style="width:100%; padding:10px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; border-radius:6px;"></div>
+                    <div><label style="display:block; font-size:0.7rem; color:#fff; margin-bottom:4px; text-transform:uppercase; font-weight:800; opacity:0.7;">Color</label><input type="color" id="userColor" value="#6366f1" style="height:40px; width:44px; border:none; background:none; padding:0; cursor:pointer;"></div>
                 </div>
 
                 <div class="btn-group" style="display:flex; gap:12px; margin-top:10px;">
@@ -245,9 +328,8 @@ function renderSettings(container) {
                         <tr style="text-align:left; color:var(--text-muted); font-size:0.8rem; cursor:pointer;">
                             <th onclick="setEmployeeSort('emp_no')">No ${getSortIcon('emp_no')}</th>
                             <th onclick="setEmployeeSort('name')">Name ${getSortIcon('name')}</th>
-                            <th onclick="setEmployeeSort('designation')">Designation ${getSortIcon('designation')}</th>
+                            <th onclick="setEmployeeSort('access_role')">Role ${getSortIcon('access_role')}</th>
                             <th onclick="setEmployeeSort('department')">Dept ${getSortIcon('department')}</th>
-                            <th onclick="setEmployeeSort('reports_to')">Reports To ${getSortIcon('reports_to')}</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -255,12 +337,11 @@ function renderSettings(container) {
                         <tr style="border-bottom:1px solid var(--glass-border);">
                             <td style="padding:12px 0;">${e.emp_no || ''}</td>
                             <td>${e.name || ''}</td>
-                            <td>${e.designation || e.role || ''}</td>
+                            <td>${e.access_role || 'Employee'}</td>
                             <td>${e.department || ''}</td>
-                            <td>${e.reports_to || ''}</td>
                             <td>
-                                <button class="btn-text" style="background:none; border:none; color:var(--accent-primary); cursor:pointer;" onclick="editEmployee('${e.id}')">Edit</button>
-                                <button class="btn-text" style="background:none; border:none; color:#ef4444; cursor:pointer; margin-left:8px;" onclick="deleteEmployee('${e.id}')">Del</button>
+                                <button class="btn-text" style="color:var(--accent-primary);" onclick="editEmployee('${e.id}')">Edit</button>
+                                ${isAdmin ? `<button class="btn-text" style="color:#ef4444; margin-left:8px;" onclick="deleteEmployee('${e.id}')">Del</button>` : ''}
                             </td>
                         </tr>`).join('')}
                     </tbody>
@@ -268,17 +349,13 @@ function renderSettings(container) {
             </div>
         </div>
 
-        <div class="glass-container"><h3>System Actions</h3><button class="btn primary" style="margin-top:20px;" onclick="triggerHrDispatchFlow()">Dispatch HR Report (CSV)</button></div>
+        ${isAdmin ? `<div class="glass-container"><h3>System Actions</h3><button class="btn primary" style="margin-top:20px;" onclick="triggerHrDispatchFlow()">Dispatch HR Report (CSV)</button></div>` : ''}
     `;
 }
 
 window.setEmployeeSort = (field) => {
-    if (state.employeeSortField === field) {
-        state.employeeSortDir = state.employeeSortDir === 'asc' ? 'desc' : 'asc';
-    } else {
-        state.employeeSortField = field;
-        state.employeeSortDir = 'asc';
-    }
+    if (state.employeeSortField === field) state.employeeSortDir = state.employeeSortDir === 'asc' ? 'desc' : 'asc';
+    else { state.employeeSortField = field; state.employeeSortDir = 'asc'; }
     renderSettings(document.getElementById('mainContent'));
 };
 
@@ -290,18 +367,18 @@ async function handleUserSubmit() {
         name: name,
         designation: document.getElementById('userDesignation').value,
         department: document.getElementById('userDepartment').value,
-        sub_department: document.getElementById('userSubDepartment').value,
+        access_role: document.getElementById('userAccessRole').value,
         reports_to: document.getElementById('userReportsTo').value,
         avatar_url: document.getElementById('userAvatarUrl').value,
         color: document.getElementById('userColor').value,
         avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     };
     const id = document.getElementById('userId').value;
-    try {
-        if (id) { await apiRequest(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(userData) }); showNotification('User updated!', 'success'); }
-        else { await apiRequest('/api/employees', { method: 'POST', body: JSON.stringify(userData) }); showNotification('User added!', 'success'); }
-        await initializeState(); renderSettings(document.getElementById('mainContent')); checkAuth(); 
-    } catch (e) { showNotification('Failed to save user.', 'error'); }
+    if (id) await apiRequest(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(userData) });
+    else await apiRequest('/api/employees', { method: 'POST', body: JSON.stringify(userData) });
+    await initializeState();
+    renderSettings(document.getElementById('mainContent'));
+    checkAuth(); 
 }
 
 window.editEmployee = (id) => {
@@ -310,9 +387,9 @@ window.editEmployee = (id) => {
     document.getElementById('userId').value = emp.id;
     document.getElementById('userEmpNo').value = emp.emp_no || '';
     document.getElementById('userName').value = emp.name || '';
-    document.getElementById('userDesignation').value = emp.designation || emp.role || '';
+    document.getElementById('userDesignation').value = emp.designation || '';
     document.getElementById('userDepartment').value = emp.department || '';
-    document.getElementById('userSubDepartment').value = emp.sub_department || '';
+    document.getElementById('userAccessRole').value = emp.access_role || 'Employee';
     document.getElementById('userReportsTo').value = emp.reports_to || '';
     document.getElementById('userAvatarUrl').value = emp.avatar_url || '';
     document.getElementById('userColor').value = emp.color || '#6366f1';
@@ -321,9 +398,10 @@ window.editEmployee = (id) => {
 };
 
 window.deleteEmployee = async (id) => {
-    if (!confirm('Delete this employee?')) return;
-    try { await apiRequest(`/api/employees/${id}`, { method: 'DELETE' }); showNotification('User deleted.', 'success'); await initializeState(); renderSettings(document.getElementById('mainContent')); }
-    catch (e) { showNotification('Delete failed.', 'error'); }
+    if (!confirm('Delete employee?')) return;
+    await apiRequest(`/api/employees/${id}`, { method: 'DELETE' });
+    await initializeState();
+    renderSettings(document.getElementById('mainContent'));
 };
 
 window.resetUserForm = () => {
@@ -332,7 +410,7 @@ window.resetUserForm = () => {
     document.getElementById('userName').value = '';
     document.getElementById('userDesignation').value = '';
     document.getElementById('userDepartment').value = '';
-    document.getElementById('userSubDepartment').value = '';
+    document.getElementById('userAccessRole').value = 'Employee';
     document.getElementById('userReportsTo').value = '';
     document.getElementById('userAvatarUrl').value = '';
     document.getElementById('userColor').value = '#6366f1';
@@ -340,8 +418,8 @@ window.resetUserForm = () => {
 };
 
 async function triggerHrDispatchFlow() {
-  try { const res = await apiRequest('/api/hr/dispatch', { method: 'POST' }); alert(`Report generated: ${res.filename}`); }
-  catch (e) { alert('Dispatch failed.'); }
+  const res = await apiRequest('/api/hr/dispatch', { method: 'POST' });
+  alert(`Report generated: ${res.filename}`);
 }
 
 function handleLogout() { state.activeProfileId = null; localStorage.removeItem('chronos_user_id'); checkAuth(); }
@@ -353,7 +431,7 @@ function setupGlobalEventListeners() {
         const empNo = document.getElementById('loginEmpNo').value;
         const emp = state.employees.find(e => e.emp_no === empNo);
         if (emp) { state.activeProfileId = emp.id; localStorage.setItem('chronos_user_id', emp.id); checkAuth(); }
-        else { const err = document.getElementById('loginError'); if (err) err.classList.remove('hidden'); }
+        else { document.getElementById('loginError').classList.remove('hidden'); }
     });
     document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
 }
@@ -369,11 +447,8 @@ function showNotification(msg, type) {
     const n = document.createElement('div');
     n.className = `notification ${type}`;
     n.textContent = msg;
-    n.style.padding = '12px 24px';
-    n.style.background = type === 'success' ? '#10b981' : '#ef4444';
-    n.style.color = '#fff';
-    n.style.borderRadius = '8px';
-    n.style.marginTop = '10px';
+    n.style.padding = '12px 24px'; n.style.background = type === 'success' ? '#10b981' : '#ef4444';
+    n.style.color = '#fff'; n.style.borderRadius = '8px'; n.style.marginTop = '10px';
     c.appendChild(n);
     setTimeout(() => n.remove(), 3000);
 }
