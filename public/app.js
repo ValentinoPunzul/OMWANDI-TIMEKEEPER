@@ -109,7 +109,7 @@ function renderDashboard(container) {
                 
                 return `
                     <div class="timer-card glass-panel">
-                        <div class="timer-avatar" style="background:${emp.color}">${emp.avatar}</div>
+                        <div class="timer-avatar" style="background:${emp.color || '#888'}">${emp.avatar || '??'}</div>
                         <div class="timer-user-info">
                             <div class="timer-user-name">${emp.name}</div>
                             <div class="timer-task-name">${t.task || 'Development'}</div>
@@ -167,10 +167,10 @@ function renderProjects(container) {
 function renderTeam(container) {
     const html = state.employees.map(e => `
         <div class="timer-card glass-panel" style="margin-bottom:10px;">
-            <div class="timer-avatar" style="background:${e.color}">${e.avatar}</div>
+            <div class="timer-avatar" style="background:${e.color || '#888'}">${e.avatar || '??'}</div>
             <div class="timer-user-info">
                 <div class="timer-user-name">${e.name}</div>
-                <div class="timer-task-name">${e.role}</div>
+                <div class="timer-task-name">${e.role || e.designation || ''}</div>
             </div>
         </div>
     `).join('');
@@ -185,11 +185,133 @@ function renderTimesheets(container) {
 function renderSettings(container) {
     container.innerHTML = `
         <div class="view-header"><h2>Settings</h2></div>
+        
+        <div class="glass-container" style="margin-bottom:24px;">
+            <h3>User Management</h3>
+            <div id="userFormContainer" class="settings-form" style="margin-top:20px;">
+                <input type="hidden" id="userId">
+                <div class="form-row">
+                    <input type="text" id="userEmpNo" placeholder="Employee Number (e.g. E001)" class="form-control">
+                    <input type="text" id="userName" placeholder="Full Name" class="form-control">
+                </div>
+                <div class="form-row">
+                    <input type="text" id="userDesignation" placeholder="Designation" class="form-control">
+                    <input type="text" id="userDepartment" placeholder="Department" class="form-control">
+                </div>
+                <div class="form-row">
+                    <input type="text" id="userSubDepartment" placeholder="Sub Department" class="form-control">
+                    <input type="text" id="userReportsTo" placeholder="Reports To" class="form-control">
+                </div>
+                <div class="form-row">
+                    <input type="text" id="userAvatarUrl" placeholder="Avatar URL" class="form-control">
+                    <input type="color" id="userColor" value="#6366f1" style="height:44px; width:44px; border:none; background:none;">
+                </div>
+                <div class="btn-group" style="margin-top:20px;">
+                    <button class="btn primary" onclick="handleUserSubmit()">Save Employee</button>
+                    <button class="btn outline" onclick="resetUserForm()">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-container" style="margin-bottom:24px;">
+            <h3>Employee List</h3>
+            <div style="overflow-x:auto;">
+                <table style="margin-top:20px;">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <th>Dept</th>
+                            <th>Reports To</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${state.employees.map(e => `
+                            <tr>
+                                <td>${e.emp_no || ''}</td>
+                                <td>${e.name || ''}</td>
+                                <td>${e.designation || e.role || ''}</td>
+                                <td>${e.department || ''}</td>
+                                <td>${e.reports_to || ''}</td>
+                                <td>
+                                    <button class="btn-text" onclick="editEmployee('${e.id}')">Edit</button>
+                                    <button class="btn-text" style="color:#ef4444" onclick="deleteEmployee('${e.id}')">Del</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="glass-container">
-            <button class="btn primary" onclick="triggerHrDispatchFlow()">Dispatch HR Report (CSV)</button>
+            <h3>System Actions</h3>
+            <button class="btn primary" style="margin-top:20px;" onclick="triggerHrDispatchFlow()">Dispatch HR Report (CSV)</button>
         </div>
     `;
 }
+
+async function handleUserSubmit() {
+    const id = document.getElementById('userId').value;
+    const userData = {
+        emp_no: document.getElementById('userEmpNo').value,
+        name: document.getElementById('userName').value,
+        designation: document.getElementById('userDesignation').value,
+        department: document.getElementById('userDepartment').value,
+        sub_department: document.getElementById('userSubDepartment').value,
+        reports_to: document.getElementById('userReportsTo').value,
+        avatar_url: document.getElementById('userAvatarUrl').value,
+        color: document.getElementById('userColor').value,
+        avatar: document.getElementById('userName').value.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    };
+
+    try {
+        if (id) {
+            await apiRequest(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(userData) });
+        } else {
+            await apiRequest('/api/employees', { method: 'POST', body: JSON.stringify(userData) });
+        }
+        await initializeState();
+        renderSettings(document.getElementById('mainContent'));
+    } catch (e) { alert('Failed to save user.'); }
+}
+
+window.editEmployee = (id) => {
+    const emp = state.employees.find(e => e.id === id);
+    if (!emp) return;
+    document.getElementById('userId').value = emp.id;
+    document.getElementById('userEmpNo').value = emp.emp_no || '';
+    document.getElementById('userName').value = emp.name || '';
+    document.getElementById('userDesignation').value = emp.designation || emp.role || '';
+    document.getElementById('userDepartment').value = emp.department || '';
+    document.getElementById('userSubDepartment').value = emp.sub_department || '';
+    document.getElementById('userReportsTo').value = emp.reports_to || '';
+    document.getElementById('userAvatarUrl').value = emp.avatar_url || '';
+    document.getElementById('userColor').value = emp.color || '#6366f1';
+};
+
+window.deleteEmployee = async (id) => {
+    if (!confirm('Delete this employee?')) return;
+    try {
+        await apiRequest(`/api/employees/${id}`, { method: 'DELETE' });
+        await initializeState();
+        renderSettings(document.getElementById('mainContent'));
+    } catch (e) { alert('Delete failed.'); }
+};
+
+window.resetUserForm = () => {
+    document.getElementById('userId').value = '';
+    document.getElementById('userEmpNo').value = '';
+    document.getElementById('userName').value = '';
+    document.getElementById('userDesignation').value = '';
+    document.getElementById('userDepartment').value = '';
+    document.getElementById('userSubDepartment').value = '';
+    document.getElementById('userReportsTo').value = '';
+    document.getElementById('userAvatarUrl').value = '';
+    document.getElementById('userColor').value = '#6366f1';
+};
 
 async function triggerHrDispatchFlow() {
   try {
