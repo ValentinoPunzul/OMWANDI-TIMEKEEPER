@@ -185,8 +185,10 @@ function renderTimer(container) {
         <div class="timer-view-container glass-container">
              <div id="faceClock" class="timer-face">00:00:00</div>
              <div style="margin-bottom:20px; display:flex; align-items:center; justify-content:center; gap:8px;">${myActiveEntry ? '<span class="pulse-emerald" style="width:10px; height:10px;"></span> <span style="color:#10b981; font-weight:700; font-size:0.8rem; letter-spacing:1px;">LIVE SESSION ACTIVE</span>' : '<span style="color:var(--text-muted); font-size:0.8rem;">READY TO TRACK</span>'}</div>
+            
             <div style="text-align:left; margin-bottom:20px;">
-                <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:800; display:block; margin-bottom:8px;">Project Selection</label>
+                <label style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:800; display:block; margin-bottom:8px;">Find & Select Project</label>
+                <input type="text" id="projectSearch" class="form-control" style="margin-bottom:12px;" placeholder="Type Project # or Name..." ${myActiveEntry ? 'disabled' : ''} oninput="window.filterTimerProjects(this.value)">
                 <select id="timerProjectSelect" class="form-control" ${myActiveEntry ? 'disabled' : ''}>${projectOptions}</select>
             </div>
             ${actionBtn}
@@ -194,8 +196,19 @@ function renderTimer(container) {
     `;
 }
 
+window.filterTimerProjects = (query) => {
+    const select = document.getElementById('timerProjectSelect');
+    const q = query.toLowerCase();
+    const filtered = state.projects.filter(p => 
+        (p.proj_no && p.proj_no.toLowerCase().includes(q)) || 
+        (p.name && p.name.toLowerCase().includes(q))
+    );
+    select.innerHTML = filtered.map(p => `<option value="${p.id}">${p.proj_no ? '['+p.proj_no+'] ' : ''}${p.name}</option>`).join('');
+};
+
 async function startTimer() {
     const pid = document.getElementById('timerProjectSelect').value;
+    if (!pid) return alert('Please select a project first.');
     const entry = { employee_id: state.activeProfileId, project_id: pid, task: 'Development', description: 'Track Log', start_time: new Date().toISOString(), total_hours: 0 };
     await apiRequest('/api/entries', { method: 'POST', body: JSON.stringify(entry) });
     await initializeState();
@@ -221,6 +234,32 @@ function renderTimesheets(container) {
     }).join('');
     container.innerHTML = `<div class="view-header"><h2>Timesheets</h2></div><div id="timesheetEditForm" class="glass-container hidden" style="margin-bottom:20px;"><h3>Edit Entry</h3><input type="hidden" id="editEntryId"><div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-top:15px;"><div><label style="font-size:0.7rem; opacity:0.7;">HOURS</label><input type="number" step="0.25" id="editEntryHours" class="form-control" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff;"></div><div><label style="font-size:0.7rem; opacity:0.7;">TASK</label><input type="text" id="editEntryTask" class="form-control" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff;"></div><div style="display:flex; align-items:flex-end; gap:10px;"><button class="btn primary" onclick="saveTimesheetEdit()">Save</button><button class="btn outline" onclick="document.getElementById('timesheetEditForm').classList.add('hidden')">Cancel</button></div></div></div><div class="glass-container"><table><thead><tr><th>Date</th><th>Member</th><th>Project</th><th>Time (Start-End)</th><th>Hours</th><th style="text-align:right;">Actions</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
 }
+
+window.editTimesheetEntry = (id) => {
+    const entry = state.timeEntries.find(e => e.id === id);
+    if (!entry) return;
+    document.getElementById('editEntryId').value = entry.id;
+    document.getElementById('editEntryHours').value = entry.total_hours;
+    document.getElementById('editEntryTask').value = entry.task || 'Development';
+    document.getElementById('timesheetEditForm').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.saveTimesheetEdit = async () => {
+    const id = document.getElementById('editEntryId').value;
+    const hours = document.getElementById('editEntryHours').value;
+    const task = document.getElementById('editEntryTask').value;
+    await apiRequest(`/api/entries/${id}`, { method: 'PUT', body: JSON.stringify({ total_hours: parseFloat(hours), task: task }) });
+    await initializeState();
+    renderTimesheets(document.getElementById('mainContent'));
+};
+
+window.deleteTimesheetEntry = async (id) => {
+    if (!confirm('Delete?')) return;
+    await apiRequest(`/api/entries/${id}`, { method: 'DELETE' });
+    await initializeState();
+    renderTimesheets(document.getElementById('mainContent'));
+};
 
 function renderSettings(container) {
     const isAdmin = state.userRole === 'Administrator';
