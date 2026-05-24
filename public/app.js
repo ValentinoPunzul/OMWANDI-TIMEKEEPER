@@ -37,6 +37,7 @@ function checkAuth() {
 
 async function initializeState() {
   try {
+    console.log('Fetching initial state from:', API_BASE);
     const [employees, projects, entries] = await Promise.all([
       apiRequest('/api/employees'),
       apiRequest('/api/projects'),
@@ -45,16 +46,29 @@ async function initializeState() {
     state.employees = employees;
     state.projects = projects;
     state.timeEntries = entries;
-  } catch (e) { console.error('Init Error:', e); }
+    console.log('State successfully synchronized with Cloud API.');
+  } catch (e) { 
+    console.error('API connection failed. Loading local data buffers.', e);
+    showNotification('Offline Mode: Using local cache', 'warning');
+    // Fallback data
+    state.employees = JSON.parse(localStorage.getItem('chronos_employees')) || [];
+    state.projects = JSON.parse(localStorage.getItem('chronos_projects')) || [];
+    state.timeEntries = JSON.parse(localStorage.getItem('chronos_entries')) || [];
+  }
 }
 
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
   const defaultHeaders = { 'Content-Type': 'application/json' };
   options.headers = { ...defaultHeaders, ...options.headers };
-  const res = await fetch(url, options);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return await res.json();
+  try {
+    const res = await fetch(url, options);
+    if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn(`Request failed for ${endpoint}:`, err.message);
+    throw err;
+  }
 }
 
 function startDashboardClock() {
@@ -170,7 +184,7 @@ function renderTeam(container) {
             <div class="timer-avatar" style="background:${e.color || '#888'}">${e.avatar || '??'}</div>
             <div class="timer-user-info">
                 <div class="timer-user-name">${e.name}</div>
-                <div class="timer-task-name">${e.role || e.designation || ''}</div>
+                <div class="timer-task-name">${e.designation || e.role || ''}</div>
             </div>
         </div>
     `).join('');
@@ -344,4 +358,14 @@ function setupGlobalEventListeners() {
 function setupNetworkMonitoring() {
     window.addEventListener('online', () => document.getElementById('statusDot').className = 'status-dot online');
     window.addEventListener('offline', () => document.getElementById('statusDot').className = 'status-dot offline');
+}
+
+function showNotification(msg, type) {
+    const c = document.getElementById('notificationContainer');
+    if (!c) return;
+    const n = document.createElement('div');
+    n.className = `notification ${type}`;
+    n.textContent = msg;
+    c.appendChild(n);
+    setTimeout(() => n.remove(), 3000);
 }

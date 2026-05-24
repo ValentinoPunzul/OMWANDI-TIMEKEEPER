@@ -7,6 +7,7 @@
   # Use https://search.nixos.org/packages to find packages
   packages = [
     pkgs.nodejs_20
+    pkgs.npm-check-updates
   ];
 
   # Sets environment variables in the workspace
@@ -14,6 +15,8 @@
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
+      "christian-kohler.path-intellisense"
+      "dbaeumer.vscode-eslint"
     ];
 
     # Enable previews
@@ -21,7 +24,7 @@
       enable = true;
       previews = {
         web = {
-          command = ["npm" "start"];
+          command = ["npm" "run" "start" "--" "--port" "$PORT" "--host" "0.0.0.0"];
           manager = "web";
           env = {
             PORT = "$PORT";
@@ -35,6 +38,8 @@
       # Runs when a workspace is first created
       onCreate = {
         npm-install = "npm install";
+        # Open the relevant files for the user
+        default.openFiles = [ "public/app.js" "server.js" "public/index.html" ];
       };
       # Runs when the workspace is (re)started
       onStart = {
