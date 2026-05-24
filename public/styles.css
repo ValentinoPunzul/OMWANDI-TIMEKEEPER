@@ -19,6 +19,7 @@ body {
   background-image: var(--bg-gradient);
   color: var(--text-main);
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .glass-container {
@@ -83,11 +84,36 @@ body {
 .dashboard-time { font-size: 6rem; font-weight: 800; line-height: 1; letter-spacing: -2px; }
 .dashboard-date { font-size: 1.2rem; color: var(--text-muted); letter-spacing: 2px; margin-top: 20px; }
 
+/* Timer View Classes */
+.timer-view-container {
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
+  width: 100%;
+}
+
+.timer-face {
+  font-size: 5rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  font-family: monospace;
+}
+
 @media (max-width: 768px) {
   .app-layout { grid-template-columns: 1fr; }
   .sidebar { display: none; }
-  .main-content { padding: 20px; }
-  .dashboard-time { font-size: 4rem; }
+  .main-content { padding: 15px; }
+  .dashboard-time { font-size: 3.5rem; }
+  .dashboard-date { font-size: 1rem; }
+  .clock-card { padding: 40px 20px; }
+  .timer-view-container { padding: 20px; }
+  .timer-face { font-size: 3.2rem; }
+  .glass-container { padding: 20px; }
+}
+
+@media (max-width: 480px) {
+  .timer-face { font-size: 2.8rem; }
+  .btn { padding: 15px 20px; font-size: 1rem !important; }
 }
 
 .pulse-emerald { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
