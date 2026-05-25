@@ -131,7 +131,7 @@ async function stopUserTimer(id) {
 }
 
 function renderTimer(container) {
-    const projects = state.projects.map(p => `<option value="${p.id}">${p.proj_no ? '['+p.proj_no+'] ' : ''}${p.name}</option>`).join('');
+    const projects = state.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
     container.innerHTML = `<div class="timer-view-container glass-container"><div id="faceClock" style="font-size:4rem; font-weight:800; margin-bottom:20px;">00:00:00</div><select id="timerProjectSelect" class="form-control" style="margin-bottom:20px;">${projects}</select><button class="btn primary" style="width:100%;" onclick="startTimer()">START SESSION</button></div>`;
 }
 
@@ -184,9 +184,9 @@ function renderSettings(container) {
             </div>
         </div>
 
-        <!-- EMPLOYEE MANAGEMENT (RESTORING ALL FIELDS) -->
+        <!-- EMPLOYEE MANAGEMENT -->
         <div class="glass-container" style="margin-bottom:24px;">
-            <h3>User Management</h3>
+            <h3 id="userFormTitle">User Management</h3>
             <div style="margin-top:20px;">
                 <label style="font-size:0.7rem; opacity:0.7; text-transform:uppercase;">Select Employee to Edit</label>
                 <select id="userSelect" class="form-control" style="margin-bottom:20px;" onchange="editEmployee(this.value)">
@@ -207,7 +207,7 @@ function renderSettings(container) {
                     <div><label style="font-size:0.7rem; opacity:0.7;">SUB DEPARTMENT</label><input type="text" id="userSubDepartment" class="form-control"></div>
                     <div><label style="font-size:0.7rem; opacity:0.7;">REPORTS TO</label><input type="text" id="userReportsTo" class="form-control"></div>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
                     <div><label style="font-size:0.7rem; opacity:0.7;">ACCESS ROLE</label>
                         <select id="userAccessRole" class="form-control">
                             <option value="Employee">Employee</option><option value="Editor">Editor</option><option value="Administrator">Administrator</option>
@@ -215,13 +215,17 @@ function renderSettings(container) {
                     </div>
                     <div><label style="font-size:0.7rem; opacity:0.7;">COLOR</label><input type="color" id="userColor" value="#6366f1" style="height:44px; width:100%; border:none; background:none; padding:0; cursor:pointer;"></div>
                 </div>
-                <button class="btn primary" onclick="handleUserSubmit()">Save Employee</button>
+                <div class="btn-group" style="display:flex; gap:12px; margin-top:10px;">
+                    <button class="btn primary" onclick="handleUserSubmit()">Save Employee</button>
+                    ${isAdmin ? `<button id="deleteEmployeeBtn" class="btn outline" style="color:#ef4444; border-color:#ef4444; display:none;" onclick="deleteEmployee()">Delete Employee</button>` : ''}
+                    <button class="btn outline" onclick="resetUserForm()">Clear</button>
+                </div>
             </div>
         </div>
 
-        <!-- PROJECT MANAGEMENT (RESTORING ALL FIELDS) -->
+        <!-- PROJECT MANAGEMENT -->
         <div class="glass-container">
-            <h3>Project Management</h3>
+            <h3 id="projectFormTitle">Project Management</h3>
             <div style="margin-top:20px;">
                 <label style="font-size:0.7rem; opacity:0.7; text-transform:uppercase;">Select Project to Edit</label>
                 <select id="projectSelect" class="form-control" style="margin-bottom:20px;" onchange="handleProjectSelect(this.value)">
@@ -234,11 +238,15 @@ function renderSettings(container) {
                     <div><label style="font-size:0.7rem; opacity:0.7;">PROJECT NUMBER</label><input type="text" id="projectNo" class="form-control"></div>
                     <div><label style="font-size:0.7rem; opacity:0.7;">PROJECT NAME</label><input type="text" id="projectName" class="form-control"></div>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
                     <div><label style="font-size:0.7rem; opacity:0.7;">CLIENT NAME</label><input type="text" id="projectClient" class="form-control"></div>
                     <div><label style="font-size:0.7rem; opacity:0.7;">VESSEL NAME</label><input type="text" id="projectVessel" class="form-control"></div>
                 </div>
-                <button class="btn primary" onclick="handleProjectSubmit()">Save Project</button>
+                <div class="btn-group" style="display:flex; gap:12px; margin-top:10px;">
+                    <button class="btn primary" onclick="handleProjectSubmit()">Save Project</button>
+                    ${isAdmin ? `<button id="deleteProjectBtn" class="btn outline" style="color:#ef4444; border-color:#ef4444; display:none;" onclick="deleteProject()">Delete Project</button>` : ''}
+                    <button class="btn outline" onclick="resetProjectForm()">Clear</button>
+                </div>
             </div>
         </div>
     `;
@@ -282,7 +290,7 @@ async function handleUserSubmit() {
 
 function editEmployee(id) {
     const emp = state.employees.find(e => e.id === id);
-    if (!emp) return;
+    if (!emp) { resetUserForm(); return; }
     document.getElementById('userId').value = emp.id;
     document.getElementById('userEmpNo').value = emp.emp_no || '';
     document.getElementById('userName').value = emp.name || '';
@@ -292,16 +300,38 @@ function editEmployee(id) {
     document.getElementById('userReportsTo').value = emp.reports_to || '';
     document.getElementById('userAccessRole').value = emp.access_role || 'Employee';
     document.getElementById('userColor').value = emp.color || '#6366f1';
+    document.getElementById('userFormTitle').textContent = 'Edit Employee: ' + emp.name;
+    const delBtn = document.getElementById('deleteEmployeeBtn');
+    if (delBtn) delBtn.style.display = 'inline-block';
+}
+
+async function deleteEmployee() {
+    const id = document.getElementById('userId').value;
+    if (!id || !confirm('Delete employee?')) return;
+    await apiRequest(`/api/employees/${id}`, { method: 'DELETE' });
+    await initializeState(); renderSettings(document.getElementById('mainContent'));
+}
+
+function resetUserForm() {
+    document.getElementById('userId').value = '';
+    document.getElementById('userForm').reset();
+    document.getElementById('userFormTitle').textContent = 'User Management';
+    document.getElementById('userSelect').value = '';
+    const delBtn = document.getElementById('deleteEmployeeBtn');
+    if (delBtn) delBtn.style.display = 'none';
 }
 
 function handleProjectSelect(id) {
     const p = state.projects.find(p => p.id === id);
-    if (!p) return;
+    if (!p) { resetProjectForm(); return; }
     document.getElementById('projectId').value = p.id;
     document.getElementById('projectNo').value = p.proj_no || '';
     document.getElementById('projectName').value = p.name || '';
     document.getElementById('projectClient').value = p.client || '';
     document.getElementById('projectVessel').value = p.vessel_name || '';
+    document.getElementById('projectFormTitle').textContent = 'Edit Project: ' + p.name;
+    const delBtn = document.getElementById('deleteProjectBtn');
+    if (delBtn) delBtn.style.display = 'inline-block';
 }
 
 async function handleProjectSubmit() {
@@ -313,6 +343,22 @@ async function handleProjectSubmit() {
     if (document.getElementById('projectId').value) await apiRequest(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) });
     else await apiRequest('/api/projects', { method: 'POST', body: JSON.stringify(data) });
     await initializeState(); renderSettings(document.getElementById('mainContent'));
+}
+
+async function deleteProject() {
+    const id = document.getElementById('projectId').value;
+    if (!id || !confirm('Delete project?')) return;
+    await apiRequest(`/api/projects/${id}`, { method: 'DELETE' });
+    await initializeState(); renderSettings(document.getElementById('mainContent'));
+}
+
+function resetProjectForm() {
+    document.getElementById('projectId').value = '';
+    document.getElementById('projectForm').reset();
+    document.getElementById('projectFormTitle').textContent = 'Project Management';
+    document.getElementById('projectSelect').value = '';
+    const delBtn = document.getElementById('deleteProjectBtn');
+    if (delBtn) delBtn.style.display = 'none';
 }
 
 function handleLogout() { state.activeProfileId = null; localStorage.removeItem('chronos_user_id'); location.reload(); }
