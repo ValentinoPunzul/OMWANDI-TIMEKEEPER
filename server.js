@@ -40,7 +40,47 @@ const checkDb = (req, res, next) => {
   next();
 };
 
-// --- Employees ---
+// ============================================
+// SCORO WEBHOOK INTEGRATION
+// ============================================
+app.post('/api/webhooks/scoro', checkDb, async (req, res) => {
+  try {
+    const scoroData = req.body;
+    console.log('Received SCORO Webhook:', JSON.stringify(scoroData));
+
+    /**
+     * SCORO payload mapping (Adjust based on your specific SCORO setup)
+     * Assuming standard SCORO project fields
+     */
+    const projectNumber = scoroData.project_number || scoroData.project_id || Date.now();
+    const projectName = scoroData.project_name || scoroData.name || 'New Scoro Project';
+    const clientName = scoroData.company_name || scoroData.client_name || 'SCORO Client';
+
+    const projectId = 'proj_' + projectNumber;
+    const newProject = {
+      id: projectId,
+      proj_no: projectNumber.toString(),
+      name: projectName,
+      client: clientName,
+      vessel_name: scoroData.vessel_name || 'N/A', // Custom field if you have it in SCORO
+      color: '#8b5cf6', // Default purple for auto-imported projects
+      imported_from: 'SCORO'
+    };
+
+    await db.ref('projects/' + projectId).set(newProject);
+    console.log(`Successfully imported SCORO project: ${projectName} (${projectNumber})`);
+    
+    res.status(200).json({ status: 'success', message: 'Project imported' });
+  } catch (error) {
+    console.error('Webhook Error:', error.message);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+// ============================================
+// STANDARD API ROUTES
+// ============================================
+
 app.get('/api/employees', checkDb, async (req, res) => {
   try {
     const snap = await db.ref('employees').once('value');
@@ -64,7 +104,6 @@ app.delete('/api/employees/:id', checkDb, async (req, res) => {
   res.json({ success: true });
 });
 
-// --- Projects ---
 app.get('/api/projects', checkDb, async (req, res) => {
   try {
     const snap = await db.ref('projects').once('value');
@@ -88,7 +127,6 @@ app.delete('/api/projects/:id', checkDb, async (req, res) => {
   res.json({ success: true });
 });
 
-// --- Entries ---
 app.get('/api/entries', checkDb, async (req, res) => {
   try {
     const snap = await db.ref('time_entries').once('value');
@@ -120,7 +158,6 @@ app.delete('/api/entries/:id', checkDb, async (req, res) => {
   res.json({ success: true });
 });
 
-// --- HR Dispatch ---
 app.post('/api/hr/dispatch', checkDb, async (req, res) => {
   try {
     const entriesSnap = await db.ref('time_entries').once('value');
