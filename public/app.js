@@ -136,6 +136,9 @@ function renderTimer(container) {
 }
 
 async function startTimer() {
+    const active = state.timeEntries.find(e => e.employee_id === state.activeProfileId && (!e.end_time || e.total_hours === 0));
+    if (active) return alert('You already have an active timer running. Please stop it before starting a new one.');
+
     const pid = document.getElementById('timerProjectSelect').value;
     await apiRequest('/api/entries', { method: 'POST', body: JSON.stringify({ employee_id: state.activeProfileId, project_id: pid, start_time: new Date().toISOString(), total_hours: 0 }) });
     await initializeState(); switchView('dashboard');
@@ -152,7 +155,11 @@ function renderTeam(container) {
 }
 
 function renderTimesheets(container) {
-    const rows = state.timeEntries.map(e => `<tr><td>${e.start_time.split('T')[0]}</td><td>${e.employee_name}</td><td>${e.project_name}</td><td>${(e.total_hours || 0).toFixed(2)}h</td></tr>`).join('');
+    // FIX: Added safety check for start_time
+    const rows = state.timeEntries.map(e => {
+        const date = e.start_time ? e.start_time.split('T')[0] : 'No Date';
+        return `<tr><td>${date}</td><td>${e.employee_name || '---'}</td><td>${e.project_name || '---'}</td><td>${(e.total_hours || 0).toFixed(2)}h</td></tr>`;
+    }).join('');
     container.innerHTML = `<h2>Timesheets</h2><div class="glass-container"><table><thead><tr><th>Date</th><th>Member</th><th>Project</th><th>Hours</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
@@ -225,7 +232,7 @@ function renderSettings(container) {
 
         <!-- PROJECT MANAGEMENT -->
         <div class="glass-container">
-            <h3 id="projectFormTitle">Project Management</h3>
+            <h3>Project Management</h3>
             <div style="margin-top:20px;">
                 <label style="font-size:0.7rem; opacity:0.7; text-transform:uppercase;">Select Project to Edit</label>
                 <select id="projectSelect" class="form-control" style="margin-bottom:20px;" onchange="handleProjectSelect(this.value)">
