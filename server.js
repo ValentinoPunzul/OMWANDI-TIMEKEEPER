@@ -33,6 +33,7 @@ const db = admin.apps.length ? admin.database() : null;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const checkDb = (req, res, next) => {
@@ -41,30 +42,30 @@ const checkDb = (req, res, next) => {
 };
 
 // ============================================
-// SCORO WEBHOOK HANDLER (SMART MAPPING)
+// SCORO WEBHOOK HANDLER (UPDATED MAPPING)
 // ============================================
 app.post('/api/webhooks/scoro', checkDb, async (req, res) => {
   try {
     const body = req.body;
     console.log('--- SCORO WEBHOOK RECEIVED ---');
-    console.log('Payload:', JSON.stringify(body));
+    console.log('Raw Payload:', JSON.stringify(body));
 
-    // Handle if SCORO sends a raw string instead of JSON
-    if (typeof body === 'string') {
-        return res.status(400).json({ error: 'Payload must be JSON. Please use {"project_number":"#no#", "project_name":"#name#"} in SCORO.' });
-    }
-
+    // SCORO Rules often wrap data in a 'data' key or send it flat
     const data = body.data || body;
     
-    // 1. Extract Project Number (Check all possible SCORO keys)
-    const projNo = data.project_number || data.project_no || data.number || data.project_id || data.id || 'SC-' + Date.now();
+    // 1. Extract Project Number
+    // Prioritize 'project_number' or 'no' over internal 'id'
+    const projNo = data.project_number || data.no || data.project_no || data.number || data.project_id || data.id || 'SC-' + Date.now();
     
     // 2. Extract Project Name
-    const projName = data.project_name || data.name || data.event || 'New SCORO Project';
+    const projName = data.project_name || data.name || data.object_name || 'New SCORO Project';
     
     // 3. Extract Client
-    const client = data.company_name || data.client_name || data.account_name || 'SCORO Client';
+    const client = data.company_name || data.client_name || data.account_name || data.company || 'SCORO Client';
     
+    // 4. Extract Vessel Name (if provided in payload)
+    const vessel = data.vessel_name || data.custom_vessel || 'N/A';
+
     const id = 'proj_' + projNo.toString().replace(/[^a-zA-Z0-9]/g, '_');
     
     const projectData = {
@@ -72,7 +73,7 @@ app.post('/api/webhooks/scoro', checkDb, async (req, res) => {
       proj_no: projNo.toString(),
       name: projName,
       client: client,
-      vessel_name: data.vessel_name || 'N/A',
+      vessel_name: vessel,
       color: '#8b5cf6',
       last_sync: new Date().toISOString(),
       source: 'SCORO'
@@ -80,7 +81,7 @@ app.post('/api/webhooks/scoro', checkDb, async (req, res) => {
 
     await db.ref('projects/' + id).update(projectData);
     
-    console.log(`SCORO Sync Success: [${projNo}] ${projName}`);
+    console.log(`SCORO Sync Success: [${projNo}] ${projName} for ${client}`);
     res.status(200).json({ status: 'success', imported: projectData });
   } catch (error) {
     console.error('SCORO Webhook Error:', error.message);
@@ -88,9 +89,7 @@ app.post('/api/webhooks/scoro', checkDb, async (req, res) => {
   }
 });
 
-// ============================================
-// STANDARD API ROUTES
-// ============================================
+// ... [Existing API Routes] ...
 
 app.get('/api/employees', checkDb, async (req, res) => {
   try {
