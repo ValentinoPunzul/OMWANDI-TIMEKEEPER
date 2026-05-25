@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CHRONOS FLOW - ADVANCED DASHBOARD CLIENT WITH FULL MANAGEMENT & SCORO
+   CHRONOS FLOW - BUG FIX ACTIVE SESSIONS CLIENT
    ========================================================================== */
 
 const state = {
@@ -127,19 +127,48 @@ async function stopUserTimer(id) {
     const entry = state.timeEntries.find(e => e.id === id);
     const hours = Math.abs(new Date() - new Date(entry.start_time)) / 36e5;
     await apiRequest(`/api/entries/${id}`, { method: 'PUT', body: JSON.stringify({ end_time: new Date().toISOString(), total_hours: Math.floor(hours * 4) / 4 }) });
-    await initializeState(); switchView(state.activeView);
+    
+    // Clear the selection fields
+    const searchInput = document.getElementById('projectSearch');
+    const selectBox = document.getElementById('timerProjectSelect');
+    if (searchInput) searchInput.value = '';
+    
+    await initializeState(); 
+    switchView(state.activeView);
 }
 
 function renderTimer(container) {
-    const projects = state.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    container.innerHTML = `<div class="timer-view-container glass-container"><div id="faceClock" style="font-size:4rem; font-weight:800; margin-bottom:20px;">00:00:00</div><select id="timerProjectSelect" class="form-control" style="margin-bottom:20px;">${projects}</select><button class="btn primary" style="width:100%;" onclick="startTimer()">START SESSION</button></div>`;
+    const projects = state.projects.map(p => `<option value="${p.id}">${p.proj_no ? '['+p.proj_no+'] ' : ''}${p.name}</option>`).join('');
+    container.innerHTML = `
+        <div class="timer-view-container glass-container">
+            <div id="faceClock" style="font-size:4rem; font-weight:800; margin-bottom:20px;">00:00:00</div>
+            <div style="text-align:left; margin-bottom:20px;">
+                <label style="font-size:0.7rem; opacity:0.7;">SEARCH PROJECT NUMBER / NAME</label>
+                <input type="text" id="projectSearch" class="form-control" style="margin-bottom:12px;" placeholder="Type here..." oninput="window.filterTimerProjects(this.value)">
+                <select id="timerProjectSelect" class="form-control">
+                    <option value="">-- Select Project --</option>
+                    ${projects}
+                </select>
+            </div>
+            <button class="btn primary" style="width:100%;" onclick="startTimer()">START SESSION</button>
+        </div>
+    `;
 }
+
+window.filterTimerProjects = (query) => {
+    const select = document.getElementById('timerProjectSelect');
+    const q = query.toLowerCase();
+    const filtered = state.projects.filter(p => (p.proj_no && p.proj_no.toLowerCase().includes(q)) || (p.name && p.name.toLowerCase().includes(q)));
+    select.innerHTML = '<option value="">-- Select Project --</option>' + filtered.map(p => `<option value="${p.id}">${p.proj_no ? '['+p.proj_no+'] ' : ''}${p.name}</option>`).join('');
+};
 
 async function startTimer() {
     const active = state.timeEntries.find(e => e.employee_id === state.activeProfileId && (!e.end_time || e.total_hours === 0));
     if (active) return alert('You already have an active timer running. Please stop it before starting a new one.');
 
     const pid = document.getElementById('timerProjectSelect').value;
+    if (!pid) return alert('Please select a project first.');
+    
     await apiRequest('/api/entries', { method: 'POST', body: JSON.stringify({ employee_id: state.activeProfileId, project_id: pid, start_time: new Date().toISOString(), total_hours: 0 }) });
     await initializeState(); switchView('dashboard');
 }
@@ -155,7 +184,6 @@ function renderTeam(container) {
 }
 
 function renderTimesheets(container) {
-    // FIX: Added safety check for start_time
     const rows = state.timeEntries.map(e => {
         const date = e.start_time ? e.start_time.split('T')[0] : 'No Date';
         return `<tr><td>${date}</td><td>${e.employee_name || '---'}</td><td>${e.project_name || '---'}</td><td>${(e.total_hours || 0).toFixed(2)}h</td></tr>`;
@@ -174,7 +202,6 @@ function renderSettings(container) {
     container.innerHTML = `
         <div class="view-header"><h2>Settings</h2></div>
         
-        <!-- SCORO MAPPER -->
         <div class="glass-container" style="margin-bottom:24px; border-left: 4px solid #8b5cf6;">
             <h3>SCORO Webhook Mapper</h3>
             <div id="mappingForm" class="settings-form" style="margin-top:20px;">
@@ -191,9 +218,8 @@ function renderSettings(container) {
             </div>
         </div>
 
-        <!-- EMPLOYEE MANAGEMENT -->
         <div class="glass-container" style="margin-bottom:24px;">
-            <h3 id="userFormTitle">User Management</h3>
+            <h3>User Management</h3>
             <div style="margin-top:20px;">
                 <label style="font-size:0.7rem; opacity:0.7; text-transform:uppercase;">Select Employee to Edit</label>
                 <select id="userSelect" class="form-control" style="margin-bottom:20px;" onchange="editEmployee(this.value)">
@@ -230,7 +256,6 @@ function renderSettings(container) {
             </div>
         </div>
 
-        <!-- PROJECT MANAGEMENT -->
         <div class="glass-container">
             <h3>Project Management</h3>
             <div style="margin-top:20px;">
@@ -258,8 +283,6 @@ function renderSettings(container) {
         </div>
     `;
 }
-
-// --- LOGIC ---
 
 async function saveMapping() {
     const data = { proj_no: document.getElementById('mapProjNo').value, name: document.getElementById('mapName').value, client: document.getElementById('mapClient').value, vessel_name: document.getElementById('mapVessel').value };
@@ -307,7 +330,6 @@ function editEmployee(id) {
     document.getElementById('userReportsTo').value = emp.reports_to || '';
     document.getElementById('userAccessRole').value = emp.access_role || 'Employee';
     document.getElementById('userColor').value = emp.color || '#6366f1';
-    document.getElementById('userFormTitle').textContent = 'Edit Employee: ' + emp.name;
     const delBtn = document.getElementById('deleteEmployeeBtn');
     if (delBtn) delBtn.style.display = 'inline-block';
 }
@@ -321,8 +343,8 @@ async function deleteEmployee() {
 
 function resetUserForm() {
     document.getElementById('userId').value = '';
-    document.getElementById('userForm').reset();
-    document.getElementById('userFormTitle').textContent = 'User Management';
+    const form = document.getElementById('userForm');
+    if (form) form.reset();
     document.getElementById('userSelect').value = '';
     const delBtn = document.getElementById('deleteEmployeeBtn');
     if (delBtn) delBtn.style.display = 'none';
@@ -336,7 +358,6 @@ function handleProjectSelect(id) {
     document.getElementById('projectName').value = p.name || '';
     document.getElementById('projectClient').value = p.client || '';
     document.getElementById('projectVessel').value = p.vessel_name || '';
-    document.getElementById('projectFormTitle').textContent = 'Edit Project: ' + p.name;
     const delBtn = document.getElementById('deleteProjectBtn');
     if (delBtn) delBtn.style.display = 'inline-block';
 }
@@ -361,8 +382,8 @@ async function deleteProject() {
 
 function resetProjectForm() {
     document.getElementById('projectId').value = '';
-    document.getElementById('projectForm').reset();
-    document.getElementById('projectFormTitle').textContent = 'Project Management';
+    const form = document.getElementById('projectForm');
+    if (form) form.reset();
     document.getElementById('projectSelect').value = '';
     const delBtn = document.getElementById('deleteProjectBtn');
     if (delBtn) delBtn.style.display = 'none';
