@@ -41,33 +41,32 @@ const checkDb = (req, res, next) => {
   next();
 };
 
+const WEBHOOK_LOG_DIR = path.join(__dirname, 'data', 'webhook_logs');
+if (!fs.existsSync(WEBHOOK_LOG_DIR)) fs.mkdirSync(WEBHOOK_LOG_DIR, { recursive: true });
+
 // ============================================
-// SCORO WEBHOOK HANDLER (UPDATED MAPPING)
+// SCORO WEBHOOK HANDLER (WITH PAYLOAD CAPTURE)
 // ============================================
 app.post('/api/webhooks/scoro', checkDb, async (req, res) => {
   try {
     const body = req.body;
-    console.log('--- SCORO WEBHOOK RECEIVED ---');
-    console.log('Raw Payload:', JSON.stringify(body));
+    
+    // CAPTURE: Save the raw payload to a file for inspection
+    const timestamp = Date.now();
+    const logFilename = `scoro_${timestamp}.json`;
+    fs.writeFileSync(path.join(WEBHOOK_LOG_DIR, logFilename), JSON.stringify(body, null, 2));
 
-    // SCORO Rules often wrap data in a 'data' key or send it flat
+    console.log(`Captured SCORO Webhook: ${logFilename}`);
+
     const data = body.data || body;
     
-    // 1. Extract Project Number
-    // Prioritize 'project_number' or 'no' over internal 'id'
-    const projNo = data.project_number || data.no || data.project_no || data.number || data.project_id || data.id || 'SC-' + Date.now();
-    
-    // 2. Extract Project Name
+    // Mapping logic
+    const projNo = data.project_number || data.no || data.project_no || data.number || data.project_id || data.id || 'SC-' + timestamp;
     const projName = data.project_name || data.name || data.object_name || 'New SCORO Project';
-    
-    // 3. Extract Client
     const client = data.company_name || data.client_name || data.account_name || data.company || 'SCORO Client';
-    
-    // 4. Extract Vessel Name (if provided in payload)
     const vessel = data.vessel_name || data.custom_vessel || 'N/A';
 
     const id = 'proj_' + projNo.toString().replace(/[^a-zA-Z0-9]/g, '_');
-    
     const projectData = {
       id: id,
       proj_no: projNo.toString(),
@@ -80,16 +79,32 @@ app.post('/api/webhooks/scoro', checkDb, async (req, res) => {
     };
 
     await db.ref('projects/' + id).update(projectData);
-    
-    console.log(`SCORO Sync Success: [${projNo}] ${projName} for ${client}`);
-    res.status(200).json({ status: 'success', imported: projectData });
+    res.status(200).json({ status: 'success', log: logFilename });
   } catch (error) {
     console.error('SCORO Webhook Error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ... [Existing API Routes] ...
+// Admin Route to view captured webhooks
+app.get('/api/admin/webhooks', async (req, res) => {
+    try {
+        const files = fs.readdirSync(WEBHOOK_LOG_DIR)
+            .filter(f => f.endsWith('.json'))
+            .sort((a, b) => fs.statSync(path.join(WEBHOOK_LOG_DIR, b)).mtime - fs.statSync(path.join(WEBHOOK_LOG_DIR, a)).mtime);
+        
+        const logs = files.slice(0, 10).map(f => ({
+            name: f,
+            content: JSON.parse(fs.readFileSync(path.join(WEBHOOK_LOG_DIR, f), 'utf8')),
+            time: fs.statSync(path.join(WEBHOOK_LOG_DIR, f)).mtime
+        }));
+        res.json(logs);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ============================================
+// STANDARD API ROUTES
+// ============================================
 
 app.get('/api/employees', checkDb, async (req, res) => {
   try {
