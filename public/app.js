@@ -1,5 +1,5 @@
 /* ==========================================================================
-   OMWANDI TIMEKEEPER - OPTIMIZED DASHBOARD CLIENT
+   OMWANDI TIMEKEEPER - PREMIUM ENTERPRISE CLIENT
    ========================================================================== */
 
 const state = {
@@ -9,8 +9,6 @@ const state = {
   activeProfileId: localStorage.getItem('chronos_user_id') || null, 
   activeView: 'dashboard',
   isOnline: navigator.onLine,
-  employeeSortField: 'name',
-  employeeSortDir: 'asc',
   userRole: 'Employee',
   scoroMapping: {}
 };
@@ -23,7 +21,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setupGlobalEventListeners();
     checkAuth();
     startDashboardClock();
-    startDataRefresh();
+    startBackgroundRefresh();
   });
 });
 
@@ -34,10 +32,13 @@ function checkAuth() {
         const me = state.employees.find(e => e.id === state.activeProfileId);
         if (me) {
             state.userRole = me.access_role || 'Employee';
-            document.getElementById('activeName').textContent = me.name;
-            document.getElementById('activeRole').textContent = me.designation || 'Staff';
+            const nameEl = document.getElementById('activeName');
+            const roleEl = document.getElementById('activeRole');
             const avatarEl = document.getElementById('activeAvatar');
+            if(nameEl) nameEl.textContent = me.name;
+            if(roleEl) roleEl.textContent = me.designation || 'Staff';
             if(avatarEl) { avatarEl.textContent = me.avatar || '??'; avatarEl.style.background = me.color || '#6366f1'; }
+            
             updateSidebarVisibility(state.userRole);
             if (loginOverlay) loginOverlay.classList.add('hidden');
             if (appLayout) appLayout.classList.remove('hidden');
@@ -51,8 +52,12 @@ function checkAuth() {
 
 function updateSidebarVisibility(role) {
     const layout = document.getElementById('appLayout');
-    if (role === 'Employee') { layout.classList.add('no-sidebar'); state.activeView = 'timer'; }
-    else { layout.classList.remove('no-sidebar'); }
+    if (role === 'Employee') {
+        layout.classList.add('no-sidebar');
+        state.activeView = 'timer';
+    } else {
+        layout.classList.remove('no-sidebar');
+    }
 }
 
 async function initializeState() {
@@ -67,16 +72,14 @@ async function initializeState() {
     state.projects = projects;
     state.timeEntries = entries;
     state.scoroMapping = mapping;
-  } catch (e) { console.error('Init Error:', e); }
+  } catch (e) { console.error('Sync Error:', e); }
 }
 
-function startDataRefresh() {
+function startBackgroundRefresh() {
     setInterval(async () => {
         await initializeState();
-        if (state.activeView === 'dashboard') {
-            const container = document.getElementById('mainContent');
-            if (container) renderDashboard(container);
-        }
+        const content = document.getElementById('mainContent');
+        if (state.activeView === 'dashboard' && content) renderDashboard(content);
     }, 60000);
 }
 
@@ -93,10 +96,12 @@ function startDashboardClock() {
     setInterval(() => {
         const timeEl = document.getElementById('dashboardTime');
         const faceClock = document.getElementById('faceClock');
+        const dateEl = document.getElementById('dashboardDate');
         const now = new Date();
         const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
         if (timeEl) timeEl.textContent = timeStr;
         if (faceClock) faceClock.textContent = timeStr;
+        if (dateEl) dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
     }, 1000);
 }
 
@@ -137,7 +142,7 @@ function renderDashboard(container) {
             }).join('');
             return `<div class="project-group"><h3>[${proj.proj_no || '---'}] ${proj.name}</h3>${list}</div>`;
         }).join('');
-    container.innerHTML = `<div class="clock-card glass-container"><div class="dashboard-time" id="dashboardTime">00:00:00</div></div><div class="active-timers-section">${html}</div>`;
+    container.innerHTML = `<div class="clock-card glass-container"><div class="dashboard-time" id="dashboardTime">00:00:00</div><div class="dashboard-date" id="dashboardDate">LOADING...</div></div><div class="active-timers-section">${html}</div>`;
 }
 
 function roundToQuarter(hours) { return Math.floor(hours * 4) / 4; }
@@ -146,13 +151,12 @@ async function stopUserTimer(id) {
     if (!confirm('Stop tracking?')) return;
     const entry = state.timeEntries.find(e => e.id === id);
     if (!entry) return;
-    const now = new Date();
-    const rawHours = Math.abs(now - new Date(entry.start_time)) / 36e5;
-    const roundedHours = roundToQuarter(rawHours);
-    await apiRequest(`/api/entries/${id}`, { method: 'PUT', body: JSON.stringify({ end_time: now.toISOString(), total_hours: roundedHours }) });
+    const hours = Math.abs(new Date() - new Date(entry.start_time)) / 36e5;
+    await apiRequest(`/api/entries/${id}`, { method: 'PUT', body: JSON.stringify({ end_time: new Date().toISOString(), total_hours: roundToQuarter(hours) }) });
     const searchInput = document.getElementById('projectSearch');
     if (searchInput) searchInput.value = '';
-    await initializeState(); switchView(state.activeView);
+    await initializeState(); 
+    switchView(state.activeView);
 }
 
 function renderTimer(container) {
@@ -163,11 +167,11 @@ function renderTimer(container) {
     
     container.innerHTML = `
         ${employeeHeader}
-        <div class="timer-view-container glass-container">
-            <div id="faceClock" style="font-size:4rem; margin-bottom:10px; font-family:monospace;">00:00:00</div>
-            <div style="margin-bottom:20px; display:flex; align-items:center; justify-content:center; gap:8px;">${myActiveEntry ? '<span class="pulse-emerald" style="width:10px; height:10px;"></span> <span style="color:#10b981; font-size:0.8rem; letter-spacing:1px;">LIVE SESSION ACTIVE</span>' : '<span style="color:var(--text-muted); font-size:0.8rem;">READY TO TRACK</span>'}</div>
+        <div class="timer-view-container glass-container" style="max-width:500px; margin: 0 auto; text-align:center;">
+            <div id="faceClock" style="font-size:4.5rem; font-weight:800; margin-bottom:10px; font-family:monospace;">00:00:00</div>
+            <div style="margin-bottom:20px; display:flex; align-items:center; justify-content:center; gap:8px;">${myActiveEntry ? '<span class="pulse-emerald" style="width:10px; height:10px;"></span> <span style="color:#10b981; font-size:0.8rem; letter-spacing:1px; font-weight:700;">LIVE SESSION ACTIVE</span>' : '<span style="color:var(--text-muted); font-size:0.8rem;">READY TO TRACK</span>'}</div>
             <div style="text-align:left; margin-bottom:20px;">
-                <label style="font-size:0.7rem; opacity:0.7;">SEARCH PROJECT</label>
+                <label style="font-size:0.7rem; opacity:0.7; font-weight:700;">SEARCH PROJECT</label>
                 <input type="text" id="projectSearch" class="form-control" style="margin-bottom:12px;" placeholder="Project # or Name..." oninput="window.filterTimerProjects(this.value)" ${myActiveEntry ? 'disabled' : ''}>
                 <select id="timerProjectSelect" class="form-control" ${myActiveEntry ? 'disabled' : ''}><option value="">-- Select Project --</option>${projects}</select>
             </div>
@@ -186,11 +190,11 @@ window.filterTimerProjects = (query) => {
 
 async function startTimer() {
     const active = state.timeEntries.find(e => e.employee_id === state.activeProfileId && (!e.end_time || e.total_hours === 0));
-    if (active) return alert('Session active.');
+    if (active) return alert('Session already active.');
     const pid = document.getElementById('timerProjectSelect').value;
     if (!pid) return alert('Select project.');
     await apiRequest('/api/entries', { method: 'POST', body: JSON.stringify({ employee_id: state.activeProfileId, project_id: pid, start_time: new Date().toISOString(), total_hours: 0 }) });
-    await initializeState(); switchView('dashboard');
+    await initializeState(); renderTimer(document.getElementById('mainContent'));
 }
 
 function renderProjects(container) {
@@ -199,7 +203,7 @@ function renderProjects(container) {
         const budget = parseFloat(p.budget_hours) || 0;
         const progress = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
         return `<div class="glass-container project-card-v2">
-            <div class="card-header"><h3>${p.name}</h3><span class="project-indicator" style="background:${p.color || 'var(--accent-primary)'}"></span></div>
+            <div class="card-header"><h3>${p.name}</h3><span class="project-indicator" style="background:${p.color || 'var(--accent-primary)'}; width:12px; height:12px; border-radius:3px;"></span></div>
             <p class="client-label">${p.client || 'Internal'}</p>
             <div class="stats-row"><span class="spent-val">${spent.toFixed(2)} <small>HRS</small></span><span class="budget-val">${budget > 0 ? budget : '∞'}</span></div>
             <div class="progress-container"><div class="progress-bar" style="width: ${progress}%"></div></div>
@@ -210,13 +214,26 @@ function renderProjects(container) {
 }
 
 function renderTeam(container) {
-    const html = state.employees.map(e => `<div class="timer-card glass-panel" style="margin-bottom:10px;"><div class="timer-avatar" style="background:${e.color}">${e.avatar}</div><div>${e.name} (${e.designation})</div></div>`).join('');
-    container.innerHTML = `<h2>Team</h2>${html}`;
+    const rows = state.employees.sort((a,b) => a.name.localeCompare(b.name)).map(e => {
+        const hours = state.timeEntries.filter(te => te.employee_id === e.id).reduce((sum, te) => sum + (te.total_hours || 0), 0);
+        return `
+            <tr>
+                <td><div style="display:flex; align-items:center; gap:12px;"><div style="width:36px; height:36px; border-radius:50%; background:${e.color}; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.8rem;">${e.avatar}</div><div><div>${e.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">#${e.emp_no || '---'}</div></div></div></td>
+                <td><span style="padding:4px 12px; background:rgba(255,255,255,0.05); border-radius:12px; font-size:0.8rem;">${e.designation || 'Staff'}</span></td>
+                <td style="color:var(--text-muted); font-size:0.85rem;">${e.reports_to || '---'}</td>
+                <td style="font-weight:600;">${hours.toFixed(1)} hrs</td>
+                <td style="text-align:right;">
+                    <button class="btn-text" style="color:var(--accent-primary);" onclick="state.activeView='settings'; renderSettings(document.getElementById('mainContent')); editEmployee('${e.id}')">✎</button>
+                    <button class="btn-text" style="color:var(--accent-rose); margin-left:10px;" onclick="deleteEmployee('${e.id}')">🗑</button>
+                </td>
+            </tr>`;
+    }).join('');
+    container.innerHTML = `<div class="view-header"><h2>Team</h2></div><div class="glass-container"><div class="table-container"><table><thead><tr><th>Employee</th><th>Role / Designation</th><th>Reports To</th><th>Hours Logged</th><th style="text-align:right;">Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
 function renderTimesheets(container) {
     const rows = state.timeEntries.map(e => {
-        const date = e.start_time ? e.start_time.split('T')[0] : 'No Date';
+        const date = e.start_time ? e.start_time.split('T')[0] : '---';
         const startT = e.start_time ? new Date(e.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---';
         const endT = e.end_time ? new Date(e.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---';
         return `<tr><td>${date}</td><td>${e.employee_name}</td><td>${e.project_name}</td><td>${startT}</td><td>${endT}</td><td>${(e.total_hours || 0).toFixed(2)}h</td></tr>`;
@@ -226,12 +243,13 @@ function renderTimesheets(container) {
 
 function renderSettings(container) {
     const isAdmin = state.userRole === 'Administrator';
-    if (!isAdmin && state.userRole !== 'Editor') { container.innerHTML = 'Access Denied'; return; }
-    const userOptions = state.employees.sort((a,b) => a.name.localeCompare(b.name)).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+    const sortedEmployees = [...state.employees].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+    const userOptions = sortedEmployees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
     const projectOptions = state.projects.map(p => `<option value="${p.id}">${p.proj_no ? '['+p.proj_no+'] ' : ''}${p.name}</option>`).join('');
 
     container.innerHTML = `
         <div class="view-header"><h2>Settings</h2></div>
+        
         <div class="glass-container" style="margin-bottom:24px; border-left: 4px solid #8b5cf6;">
             <h3>SCORO Webhook Mapper</h3>
             <div id="mappingForm" class="settings-form" style="margin-top:20px;">
@@ -244,7 +262,6 @@ function renderSettings(container) {
                     <div><label style="font-size:0.7rem; opacity:0.7;">VESSEL NAME PATH</label><input type="text" id="mapVessel" value="${state.scoroMapping.vessel_name || 'cf:c_vesselname'}" class="form-control"></div>
                 </div>
                 <button class="btn primary" onclick="saveMapping()">Save Mapping</button>
-                <button class="btn outline" style="margin-left:10px;" onclick="viewLatestWebhook()">View JSON</button>
             </div>
         </div>
 
@@ -263,7 +280,7 @@ function renderSettings(container) {
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
                     <div><label style="font-size:0.7rem; opacity:0.7;">DEPT</label><input type="text" id="userDepartment" class="form-control"></div>
-                    <div><label style="font-size:0.7rem; opacity:0.7;">SUB DEPT</label><input type="text" id="userSubDepartment" class="form-control"></div>
+                    <div><label style="font-size:0.7rem; opacity:0.7;">REPORTS TO</label><input type="text" id="userReportsTo" class="form-control"></div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
                     <div><label style="font-size:0.7rem; opacity:0.7;">ROLE</label><select id="userAccessRole" class="form-control"><option value="Employee">Employee</option><option value="Editor">Editor</option><option value="Administrator">Administrator</option></select></div>
@@ -278,7 +295,7 @@ function renderSettings(container) {
             <select id="projectSelect" class="form-control" style="margin:20px 0;" onchange="handleProjectSelect(this.value)"><option value="">-- Add New Project --</option>${projectOptions}</select>
             <div id="projectForm" class="settings-form">
                 <input type="hidden" id="projectId">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
                     <div><label style="font-size:0.7rem; opacity:0.7;">PROJECT NO</label><input type="text" id="projectNo" class="form-control"></div>
                     <div><label style="font-size:0.7rem; opacity:0.7;">PROJECT NAME</label><input type="text" id="projectName" class="form-control"></div>
                 </div>
@@ -295,11 +312,10 @@ function renderSettings(container) {
     `;
 }
 
-// REST OF LOGIC (saveMapping, handleUserSubmit, deleteEmployee, etc.) UNCHANGED...
+// Support Functions...
 async function saveMapping() { const data = { proj_no: document.getElementById('mapProjNo').value, name: document.getElementById('mapName').value, client: document.getElementById('mapClient').value, vessel_name: document.getElementById('mapVessel').value }; await apiRequest('/api/settings/mapping', { method: 'POST', body: JSON.stringify(data) }); showNotification('Mapping saved!', 'success'); }
-async function viewLatestWebhook() { const logs = await apiRequest('/api/admin/webhooks'); if (logs.length > 0) { const win = window.open("", "Webhook JSON", "width=600,height=600"); win.document.body.innerHTML = `<pre style="background:#222; color:#0f0; padding:20px;">${JSON.stringify(logs[0].content, null, 2)}</pre>`; } else { alert('No logs found.'); } }
-async function handleUserSubmit() { const name = document.getElementById('userName').value; if(!name) return alert('Name required'); const userData = { emp_no: document.getElementById('userEmpNo').value, password: document.getElementById('userPassword').value, name, designation: document.getElementById('userDesignation').value, department: document.getElementById('userDepartment').value, sub_department: document.getElementById('userSubDepartment').value, access_role: document.getElementById('userAccessRole').value, color: document.getElementById('userColor').value, avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) }; const id = document.getElementById('userId').value; if (id) await apiRequest(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(userData) }); else await apiRequest('/api/employees', { method: 'POST', body: JSON.stringify(userData) }); await initializeState(); renderSettings(document.getElementById('mainContent')); }
-function editEmployee(id) { const emp = state.employees.find(e => e.id === id); if (!emp) { resetUserForm(); return; } document.getElementById('userId').value = emp.id; document.getElementById('userEmpNo').value = emp.emp_no || ''; document.getElementById('userName').value = emp.name || ''; document.getElementById('userPassword').value = emp.password || ''; document.getElementById('userDesignation').value = emp.designation || ''; document.getElementById('userDepartment').value = emp.department || ''; document.getElementById('userSubDepartment').value = emp.sub_department || ''; document.getElementById('userAccessRole').value = emp.access_role || 'Employee'; document.getElementById('userColor').value = emp.color || '#6366f1'; const delBtn = document.getElementById('deleteEmployeeBtn'); if (delBtn) delBtn.style.display = 'inline-block'; }
+async function handleUserSubmit() { const name = document.getElementById('userName').value; if(!name) return alert('Name required'); const userData = { emp_no: document.getElementById('userEmpNo').value, password: document.getElementById('userPassword').value, name, designation: document.getElementById('userDesignation').value, department: document.getElementById('userDepartment').value, reports_to: document.getElementById('userReportsTo').value, access_role: document.getElementById('userAccessRole').value, color: document.getElementById('userColor').value, avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) }; const id = document.getElementById('userId').value; if (id) await apiRequest(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(userData) }); else await apiRequest('/api/employees', { method: 'POST', body: JSON.stringify(userData) }); await initializeState(); renderSettings(document.getElementById('mainContent')); }
+function editEmployee(id) { const emp = state.employees.find(e => e.id === id); if (!emp) { resetUserForm(); return; } document.getElementById('userId').value = emp.id; document.getElementById('userEmpNo').value = emp.emp_no || ''; document.getElementById('userName').value = emp.name || ''; document.getElementById('userPassword').value = emp.password || ''; document.getElementById('userDesignation').value = emp.designation || ''; document.getElementById('userDepartment').value = emp.department || ''; document.getElementById('userReportsTo').value = emp.reports_to || ''; document.getElementById('userAccessRole').value = emp.access_role || 'Employee'; document.getElementById('userColor').value = emp.color || '#6366f1'; const delBtn = document.getElementById('deleteEmployeeBtn'); if (delBtn) delBtn.style.display = 'inline-block'; }
 async function deleteEmployee() { const id = document.getElementById('userId').value; if (!id || !confirm('Delete employee?')) return; await apiRequest(`/api/employees/${id}`, { method: 'DELETE' }); await initializeState(); renderSettings(document.getElementById('mainContent')); }
 function resetUserForm() { document.getElementById('userId').value = ''; const form = document.getElementById('userForm'); if (form) form.reset(); document.getElementById('userSelect').value = ''; const delBtn = document.getElementById('deleteEmployeeBtn'); if (delBtn) delBtn.style.display = 'none'; }
 function handleProjectSelect(id) { const p = state.projects.find(p => p.id === id); if (!p) { resetProjectForm(); return; } document.getElementById('projectId').value = p.id; document.getElementById('projectNo').value = p.proj_no || ''; document.getElementById('projectName').value = p.name || ''; document.getElementById('projectClient').value = p.client || ''; document.getElementById('projectVessel').value = p.vessel_name || ''; document.getElementById('projectBudget').value = p.budget_hours || ''; const delBtn = document.getElementById('deleteProjectBtn'); if (delBtn) delBtn.style.display = 'inline-block'; }
