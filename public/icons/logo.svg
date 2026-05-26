@@ -1,23 +1,9 @@
-<svg width="200" height="200" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8b5cf6" />
-      <stop offset="100%" stop-color="#06b6d4" />
-    </linearGradient>
-  </defs>
-  <!-- Background Rounded Rect -->
-  <rect width="448" height="448" x="32" y="32" rx="100" fill="#0a0c14" />
-  <!-- Glowing Rings -->
-  <circle cx="256" cy="256" r="160" fill="none" stroke="url(#logoGrad)" stroke-width="12" stroke-opacity="0.3" />
-  <circle cx="256" cy="256" r="140" fill="none" stroke="url(#logoGrad)" stroke-width="8" stroke-dasharray="10 20" />
-  <!-- Central X Icon -->
-  <path d="M180 160C220 256 292 256 332 352" stroke="#06b6d4" stroke-width="24" stroke-linecap="round" fill="none" />
-  <path d="M332 160C292 256 220 256 180 352" stroke="#8b5cf6" stroke-width="24" stroke-linecap="round" fill="none" />
-  <!-- Center Hub -->
-  <circle cx="256" cy="256" r="14" fill="#f59e0b" />
-  <!-- Outer Pips -->
-  <circle cx="256" cy="96" r="6" fill="#fff" />
-  <circle cx="256" cy="416" r="6" fill="#fff" />
-  <circle cx="96" cy="256" r="6" fill="#fff" />
-  <circle cx="416" cy="256" r="6" fill="#fff" />
+<svg width="220" height="80" viewBox="0 0 500 180" xmlns="http://www.w3.org/2000/svg">
+  <!-- Omwandi Tree Logo Silhouette -->
+  <path d="M190 100c-15-5-35-15-50-5-10 8-5 15-20 18-12 2-25-10-40-5-15 5-20 25-10 35 12 12 40 10 55 5 10-4 15-15 30-18 15-3 30 10 45 5 10-4 12-15 25-18s30 10 45 5c15-5 25-25 15-40-8-12-30-15-45-10-10 4-15 15-30 18-12 2-25-10-40-5-10 4-15 15-20 10z" fill="#3a2a1a" />
+  <path d="M175 145c2-10 5-20 2-30-2-8-10-15-8-25 2-8 10-12 15-18 8-8 5-20 12-28 10-12 30-10 45-15s25-20 40-22c15-2 30 10 45 8 12-2 20-15 35-18 15-4 35 5 45 15 12 12 5 30 10 45 4 15 20 20 15 35-4 12-20 12-30 18-10 6-12 20-22 25-12 6-25-5-38-2-12 3-15 18-28 20-15 2-25-12-40-10-12 2-15 15-28 18-15 4-35-5-45-15-12-12-5-30-10-45z" fill="#3a2a1a" />
+  <!-- Trunk -->
+  <path d="M160 140c5 10 2 25 5 35 2 10 10 5 12 0 4-15 2-30 5-45-8 5-15 12-22 10z" fill="#3a2a1a" />
+  <!-- Text OMWANDI -->
+  <text x="210" y="165" font-family="Times New Roman, serif" font-size="95" font-weight="400" fill="#000">Omwandi</text>
 </svg>
