@@ -15,9 +15,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Montserrat:wght@400;500;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/styles.css?v=4.10">
+  <link rel="stylesheet" href="/styles.css?v=5.0">
   <style>
-    /* Premium Login Styles */
+    /* Premium Login Styles matching Screenshot exactly */
     #loginOverlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: #f4f7fa; 
@@ -37,12 +37,17 @@
     .login-logo { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
     .login-title { 
         font-family: 'Montserrat', sans-serif;
-        font-size: 1.6rem; font-weight: 500; color: #000; 
-        margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1px;
+        font-size: 1.4rem; /* 2pt smaller than 1.6rem */
+        font-weight: 400; /* Not bold */
+        color: #000; 
+        margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1.5px;
     }
     .form-group { text-align: left; margin-bottom: 24px; position: relative; }
     .form-label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-    .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: #000; }
+    .form-label { 
+        display: block; font-size: 0.85rem; font-weight: 600; 
+        color: #000; text-transform: none;
+    }
     .forgot-link { font-size: 0.85rem; color: #000; text-decoration: underline; cursor: pointer; }
     
     .login-input {
@@ -81,7 +86,9 @@
       
       <form id="loginForm">
         <div class="form-group">
-            <div class="form-label-row"><label class="form-label">Employee Number</label></div>
+            <div class="form-label-row">
+                <label class="form-label">Employee Number</label>
+            </div>
             <input type="text" id="loginEmpNo" class="login-input" placeholder="e.g. 111" required autofocus>
         </div>
         <div class="form-group">
@@ -158,6 +165,6 @@
   </div>
 
   <div class="notification-container" id="notificationContainer"></div>
-  <script src="/app.js?v=4.10"></script>
+  <script src="/app.js?v=5.0"></script>
 </body>
 </html>
