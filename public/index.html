@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/styles.css?v=4.7">
+  <link rel="stylesheet" href="/styles.css?v=4.8">
   <style>
     /* Premium Login Styles matching Screenshot exactly */
     #loginOverlay {
@@ -29,7 +29,22 @@
       background: #ffffff; border-radius: 12px; border: 1px solid #e1e8f0;
       box-shadow: 0 10px 25px rgba(0,0,0,0.05);
     }
-    .login-logo { width: 220px; margin: 0 auto 30px auto; display: block; }
+    /* Fixed Logo Styling */
+    .login-logo-container {
+        width: 100%;
+        max-width: 280px;
+        height: 120px;
+        margin: 0 auto 30px auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .login-logo { 
+        max-width: 100%; 
+        max-height: 100%; 
+        object-fit: contain;
+        display: block; 
+    }
     .login-title { 
         font-size: 1.8rem; font-weight: 800; color: #000; 
         margin-bottom: 40px; text-transform: uppercase; letter-spacing: 0.5px;
@@ -65,8 +80,10 @@
   <!-- Sign In Screen -->
   <div id="loginOverlay">
     <div class="login-card">
-      <!-- UPDATED TO PNG -->
-      <img src="/icons/logo.png" class="login-logo" alt="Omwandi Logo">
+      <div class="login-logo-container">
+        <!-- Using absolute path and fallback logic -->
+        <img src="/icons/logo.png" class="login-logo" alt="Omwandi Logo" onerror="this.src='/icons/logo.svg'">
+      </div>
       <h1 class="login-title">OMWANDI TIMEKEEPER</h1>
       
       <form id="loginForm">
@@ -148,6 +165,6 @@
   </div>
 
   <div class="notification-container" id="notificationContainer"></div>
-  <script src="/app.js?v=4.7"></script>
+  <script src="/app.js?v=4.8"></script>
 </body>
 </html>
