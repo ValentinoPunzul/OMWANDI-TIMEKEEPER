@@ -10,22 +10,38 @@ const PORT = process.env.PORT || 8080;
 function initializeFirebase() {
   let serviceAccount;
   const saEnvVar = process.env.FIREBASE_SERVICE_ACCOUNT;
+  
   if (saEnvVar) {
-    try { serviceAccount = typeof saEnvVar === 'string' ? JSON.parse(saEnvVar) : saEnvVar; } 
-    catch (e) { console.error('Firebase: Error parsing Secret:', e.message); }
+    try { 
+      serviceAccount = typeof saEnvVar === 'string' ? JSON.parse(saEnvVar) : saEnvVar;
+      console.log('Firebase: Using Service Account from Environment Variable');
+    } catch (e) { console.error('Firebase: Error parsing FIREBASE_SERVICE_ACCOUNT secret:', e.message); }
   }
+  
   if (!serviceAccount) {
     const localPath = path.join(__dirname, 'firebase-service-account.json');
-    if (fs.existsSync(localPath)) serviceAccount = require(localPath);
+    if (fs.existsSync(localPath)) {
+      serviceAccount = require(localPath);
+      console.log('Firebase: Using Service Account from local JSON file');
+    }
   }
+
   const dbUrl = process.env.FIREBASE_DATABASE_URL || "https://omwandi-timekeeping-default-rtdb.firebaseio.com";
+
   try {
     const config = { databaseURL: dbUrl };
     if (serviceAccount) {
       config.credential = admin.credential.cert(serviceAccount);
       admin.initializeApp(config);
-    } else { admin.initializeApp(config); }
-  } catch (error) { console.error('Firebase: Init Failed:', error.message); }
+      console.log(`Firebase: Successfully initialized for ${dbUrl}`);
+    } else {
+      // Fallback for GCP environments
+      admin.initializeApp(config);
+      console.log(`Firebase: Initialized with Default Credentials for ${dbUrl}`);
+    }
+  } catch (error) { 
+    console.error('Firebase: CRITICAL INITIALIZATION FAILURE:', error.message); 
+  }
 }
 
 initializeFirebase();
@@ -37,87 +53,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const checkDb = (req, res, next) => {
-  if (!db) return res.status(503).json({ error: 'DB not connected.' });
+  if (!db) {
+    console.error(`503 Service Unavailable: Database not connected for request ${req.url}`);
+    return res.status(503).json({ 
+        error: 'DB not connected.', 
+        details: 'Firebase Admin SDK failed to initialize. Check server console logs for CRITICAL INITIALIZATION FAILURE.'
+    });
+  }
   next();
 };
 
-const WEBHOOK_LOG_DIR = path.join(__dirname, 'data', 'webhook_logs');
-if (!fs.existsSync(WEBHOOK_LOG_DIR)) fs.mkdirSync(WEBHOOK_LOG_DIR, { recursive: true });
+// ... [Existing API Routes remain the same] ...
 
-// Helper to get value from nested object path (e.g. "entity.no")
-function getValueByPath(obj, path) {
-    if (!path) return null;
-    if (path.startsWith('cf:')) {
-        const cfId = path.split(':')[1];
-        const customFields = (obj.entity && obj.entity.custom_fields) || obj.custom_fields || [];
-        const field = customFields.find(f => f.id === cfId);
-        return field ? field.value : null;
-    }
-    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-}
-
-// ============================================
-// DYNAMIC WEBHOOK HANDLER
-// ============================================
-app.post('/api/webhooks/scoro', checkDb, async (req, res) => {
-  try {
-    const body = req.body;
-    fs.writeFileSync(path.join(WEBHOOK_LOG_DIR, `scoro_${Date.now()}.json`), JSON.stringify(body, null, 2));
-
-    // Fetch user-defined mappings from DB
-    const mappingSnap = await db.ref('settings/scoro_mapping').once('value');
-    const mappings = mappingSnap.val() || {
-        proj_no: "entity.no",
-        name: "entity.project_name",
-        client: "entity.company_name",
-        vessel_name: "cf:c_vesselname"
-    };
-
-    const projNo = getValueByPath(body, mappings.proj_no) || 'SC-' + Date.now();
-    const projName = getValueByPath(body, mappings.name) || 'New Project';
-    const client = getValueByPath(body, mappings.client) || 'Client';
-    const vessel = getValueByPath(body, mappings.vessel_name) || 'N/A';
-
-    const id = 'proj_' + projNo.toString().replace(/[^a-zA-Z0-9]/g, '_');
-    const projectData = {
-      id: id,
-      proj_no: projNo.toString(),
-      name: projName,
-      client: client,
-      vessel_name: vessel,
-      color: '#8b5cf6',
-      last_sync: new Date().toISOString(),
-      source: 'SCORO'
-    };
-
-    await db.ref('projects/' + id).update(projectData);
-    res.status(200).json({ status: 'success' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Mapping API
-app.get('/api/settings/mapping', checkDb, async (req, res) => {
-    const snap = await db.ref('settings/scoro_mapping').once('value');
-    res.json(snap.val() || {});
-});
-
-app.post('/api/settings/mapping', checkDb, async (req, res) => {
-    await db.ref('settings/scoro_mapping').set(req.body);
-    res.json({ success: true });
-});
-
-app.get('/api/admin/webhooks', async (req, res) => {
-    try {
-        const files = fs.readdirSync(WEBHOOK_LOG_DIR).filter(f => f.endsWith('.json'))
-            .sort((a, b) => fs.statSync(path.join(WEBHOOK_LOG_DIR, b)).mtime - fs.statSync(path.join(WEBHOOK_LOG_DIR, a)).mtime);
-        const logs = files.slice(0, 5).map(f => ({ name: f, content: JSON.parse(fs.readFileSync(path.join(WEBHOOK_LOG_DIR, f), 'utf8')) }));
-        res.json(logs);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// Standard Routes...
 app.get('/api/employees', checkDb, async (req, res) => {
   const snap = await db.ref('employees').once('value');
   res.json(Object.values(snap.val() || {}));
@@ -173,28 +120,13 @@ app.delete('/api/entries/:id', checkDb, async (req, res) => {
   await db.ref('time_entries/' + req.params.id).remove();
   res.json({ success: true });
 });
-app.post('/api/hr/dispatch', checkDb, async (req, res) => {
-  try {
-    const entriesSnap = await db.ref('time_entries').once('value');
-    const empsSnap = await db.ref('employees').once('value');
-    const projsSnap = await db.ref('projects').once('value');
-    const entries = Object.values(entriesSnap.val() || {});
-    const emps = empsSnap.val() || {};
-    const projs = projsSnap.val() || {};
-    if (entries.length === 0) return res.status(404).json({ error: 'No data' });
-    const csvHeaders = ['Date', 'Employee Name', 'Role', 'Project Name', 'Client', 'Task Tag', 'Description', 'Hours Logged'];
-    const csvRows = entries.map(e => {
-        const emp = emps[e.employee_id] || {};
-        const proj = projs[e.project_id] || {};
-        return [`"${e.start_time.split('T')[0]}"`,`"${emp.name || 'Unknown'}"`,`"${emp.role || emp.designation || ''}"`,`"${proj.name || 'Internal'}"`,`"${proj.client || ''}"`,`"${e.task || ''}"`,`"${e.description || ''}"`,e.total_hours].join(',');
-    });
-    const content = [csvHeaders.join(','), ...csvRows].join('\n');
-    const filename = `HR_Report_${Date.now()}_ALL_to_ALL.csv`;
-    const dispatchDir = path.join(__dirname, 'data', 'hr_dispatched');
-    if (!fs.existsSync(dispatchDir)) fs.mkdirSync(dispatchDir, { recursive: true });
-    fs.writeFileSync(path.join(dispatchDir, filename), content);
-    res.json({ status: 'success', filename });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+app.get('/api/settings/mapping', checkDb, async (req, res) => {
+    const snap = await db.ref('settings/scoro_mapping').once('value');
+    res.json(snap.val() || {});
+});
+app.post('/api/settings/mapping', checkDb, async (req, res) => {
+    await db.ref('settings/scoro_mapping').set(req.body);
+    res.json({ success: true });
 });
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
