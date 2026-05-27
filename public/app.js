@@ -1,5 +1,5 @@
 /* ==========================================================================
-   OMWANDI TIMEKEEPER - PREMIUM ENTERPRISE CLIENT
+   OMWANDI TIMEKEEPER - MOBILE OPTIMIZED ENTERPRISE CLIENT
    ========================================================================== */
 
 const state = {
@@ -18,6 +18,8 @@ const state = {
 };
 
 const API_BASE = ""; 
+
+const isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
 window.addEventListener('DOMContentLoaded', () => {
   setupNetworkMonitoring();
@@ -46,6 +48,12 @@ function checkAuth() {
             updateSidebarVisibility(state.userRole);
             if (loginOverlay) loginOverlay.classList.add('hidden');
             if (appLayout) appLayout.classList.remove('hidden');
+            
+            // Force Timer View on Mobile regardless of role
+            if (isMobile()) {
+                state.activeView = 'timer';
+            }
+            
             switchView(state.activeView);
         } else { handleLogout(); }
     } else {
@@ -56,9 +64,12 @@ function checkAuth() {
 
 function updateSidebarVisibility(role) {
     const layout = document.getElementById('appLayout');
-    if (role === 'Employee' || role === 'Viewer') {
+    if (role === 'Employee' || role === 'Viewer' || isMobile()) {
         layout.classList.add('no-sidebar');
-        state.activeView = 'timer';
+        // On mobile or for restricted roles, we only want them to see the timer
+        if (state.activeView !== 'timer' && (role === 'Employee' || role === 'Viewer' || isMobile())) {
+            state.activeView = 'timer';
+        }
     } else {
         layout.classList.remove('no-sidebar');
     }
@@ -114,7 +125,7 @@ function renderViewHeader(title) {
     const me = state.employees.find(e => e.id === state.activeProfileId);
     const logoutBtn = `<button class="btn outline" style="padding:8px 16px; font-size:0.8rem; height:fit-content;" onclick="handleLogout()">Logout</button>`;
     
-    if (state.userRole === 'Employee' || state.userRole === 'Viewer') {
+    if (state.userRole === 'Employee' || state.userRole === 'Viewer' || isMobile()) {
         return `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; width:100%;">
                 <div>
@@ -309,27 +320,28 @@ window.setTimesheetSort = (field) => {
 
 function renderSettings(container) {
     const isAdmin = state.userRole === 'Administrator';
-    const userOptions = state.employees.sort((a,b) => a.name.localeCompare(b.name)).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+    const sortedEmployees = [...state.employees].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+    const userOptions = sortedEmployees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
     const projectOptions = state.projects.map(p => `<option value="${p.id}">${p.proj_no ? '['+p.proj_no+'] ' : ''}${p.name}</option>`).join('');
     container.innerHTML = `
         ${renderViewHeader('Settings')}
-        <div class="glass-container" style="margin-bottom:24px; border-left: 4px solid #8b5cf6;"><h3>SCORO Webhook Mapper</h3><div id="mappingForm" class="settings-form" style="margin-top:20px;"><div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="font-size:0.7rem; opacity:0.7; font-weight:700;">PROJECT NO PATH</label><input type="text" id="mapProjNo" value="${state.scoroMapping.proj_no || 'entity.no'}" class="form-control"></div><div><label style="font-size:0.7rem; opacity:0.7; font-weight:700;">PROJECT NAME PATH</label><input type="text" id="mapName" value="${state.scoroMapping.name || 'entity.project_name'}" class="form-control"></div></div><button class="btn primary" onclick="saveMapping()">Save Mapping Configuration</button></div></div>
+        <div class="glass-container" style="margin-bottom:24px; border-left: 4px solid #8b5cf6;"><h3>SCORO Webhook Mapper</h3><div id="mappingForm" class="settings-form" style="margin-top:20px;"><div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="font-size:0.7rem; opacity:0.7; font-weight:700;">PROJ NO PATH</label><input type="text" id="mapProjNo" value="${state.scoroMapping.proj_no || 'entity.no'}" class="form-control"></div><div><label style="font-size:0.7rem; opacity:0.7; font-weight:700;">PROJ NAME PATH</label><input type="text" id="mapName" value="${state.scoroMapping.name || 'entity.project_name'}" class="form-control"></div></div><button class="btn primary" onclick="saveMapping()">Save Mapping Configuration</button></div></div>
         <div class="glass-container" style="margin-bottom:24px;"><h3>User Management</h3><select id="userSelect" class="form-control" style="margin:20px 0;" onchange="editEmployee(this.value)"><option value="">-- Add New Employee --</option>${userOptions}</select><div id="userForm" class="settings-form"><input type="hidden" id="userId"><div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="font-size:0.7rem; opacity:0.7; font-weight:700;">EMP NO</label><input type="text" id="userEmpNo" class="form-control"></div><div><label style="font-size:0.7rem; opacity:0.7; font-weight:700;">FULL NAME</label><input type="text" id="userName" class="form-control"></div></div><div class="btn-group" style="display:flex; gap:12px; margin-top:10px;"><button class="btn primary" onclick="handleUserSubmit()">Save Employee</button>${isAdmin ? `<button id="deleteEmployeeBtn" class="btn outline" style="color:#ef4444; display:none;" onclick="deleteEmployee()">Delete</button>` : ''}</div></div></div>
     `;
 }
 
+window.handleLogout = () => { state.activeProfileId = null; localStorage.removeItem('chronos_user_id'); location.reload(); };
+window.showNotification = (msg, type) => { const n = document.createElement('div'); n.className = `notification ${type}`; n.textContent = msg; n.style.padding = '12px 24px'; n.style.background = type === 'success' ? '#10b981' : '#ef4444'; n.style.color = '#fff'; n.style.borderRadius = '8px'; n.style.marginTop = '10px'; document.getElementById('notificationContainer').appendChild(n); setTimeout(() => n.remove(), 3000); };
+
 async function saveMapping() { const data = { proj_no: document.getElementById('mapProjNo').value, name: document.getElementById('mapName').value, client: document.getElementById('mapClient').value, vessel_name: document.getElementById('mapVessel').value }; await apiRequest('/api/settings/mapping', { method: 'POST', body: JSON.stringify(data) }); showNotification('Mapping saved!', 'success'); }
-async function handleUserSubmit() { const name = document.getElementById('userName').value; if(!name) return alert('Name required'); const userData = { emp_no: document.getElementById('userEmpNo').value, password: document.getElementById('userPassword').value, name, designation: document.getElementById('userDesignation').value, department: document.getElementById('userDepartment').value, reports_to: document.getElementById('userReportsTo').value, access_role: document.getElementById('userAccessRole').value, color: document.getElementById('userColor').value, avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) }; const id = document.getElementById('userId').value; if (id) await apiRequest(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(userData) }); else await apiRequest('/api/employees', { method: 'POST', body: JSON.stringify(userData) }); await initializeState(); renderSettings(document.getElementById('mainContent')); }
-function editEmployee(id) { const emp = state.employees.find(e => e.id === id); if (!emp) { resetUserForm(); return; } document.getElementById('userId').value = emp.id; document.getElementById('userEmpNo').value = emp.emp_no || ''; document.getElementById('userName').value = emp.name || ''; document.getElementById('userPassword').value = emp.password || ''; document.getElementById('userDesignation').value = emp.designation || ''; document.getElementById('userDepartment').value = emp.department || ''; document.getElementById('userReportsTo').value = emp.reports_to || ''; document.getElementById('userAccessRole').value = emp.access_role || 'Employee'; document.getElementById('userColor').value = emp.color || '#6366f1'; const delBtn = document.getElementById('deleteEmployeeBtn'); if (delBtn) delBtn.style.display = 'inline-block'; }
+async function handleUserSubmit() { const name = document.getElementById('userName').value; if(!name) return alert('Name required'); const userData = { emp_no: document.getElementById('userEmpNo').value, password: document.getElementById('userPassword').value, name, designation: document.getElementById('userDesignation').value, department: document.getElementById('userDepartment').value, sub_department: document.getElementById('userSubDepartment').value, access_role: document.getElementById('userAccessRole').value, color: document.getElementById('userColor').value, avatar: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) }; const id = document.getElementById('userId').value; if (id) await apiRequest(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(userData) }); else await apiRequest('/api/employees', { method: 'POST', body: JSON.stringify(userData) }); await initializeState(); renderSettings(document.getElementById('mainContent')); }
+function editEmployee(id) { const emp = state.employees.find(e => e.id === id); if (!emp) { resetUserForm(); return; } document.getElementById('userId').value = emp.id; document.getElementById('userEmpNo').value = emp.emp_no || ''; document.getElementById('userName').value = emp.name || ''; document.getElementById('userPassword').value = emp.password || ''; document.getElementById('userDesignation').value = emp.designation || ''; document.getElementById('userDepartment').value = emp.department || ''; document.getElementById('userSubDepartment').value = emp.sub_department || ''; document.getElementById('userAccessRole').value = emp.access_role || 'Employee'; document.getElementById('userColor').value = emp.color || '#6366f1'; const delBtn = document.getElementById('deleteEmployeeBtn'); if (delBtn) delBtn.style.display = 'inline-block'; }
 async function deleteEmployee() { const id = document.getElementById('userId').value; if (!id || !confirm('Delete employee?')) return; await apiRequest(`/api/employees/${id}`, { method: 'DELETE' }); await initializeState(); renderSettings(document.getElementById('mainContent')); }
 function resetUserForm() { document.getElementById('userId').value = ''; const form = document.getElementById('userForm'); if (form) form.reset(); document.getElementById('userSelect').value = ''; const delBtn = document.getElementById('deleteEmployeeBtn'); if (delBtn) delBtn.style.display = 'none'; }
 function handleProjectSelect(id) { const p = state.projects.find(p => p.id === id); if (!p) { resetProjectForm(); return; } document.getElementById('projectId').value = p.id; document.getElementById('projectNo').value = p.proj_no || ''; document.getElementById('projectName').value = p.name || ''; document.getElementById('projectClient').value = p.client || ''; document.getElementById('projectVessel').value = p.vessel_name || ''; document.getElementById('projectBudget').value = p.budget_hours || ''; const delBtn = document.getElementById('deleteProjectBtn'); if (delBtn) delBtn.style.display = 'inline-block'; }
 async function handleProjectSubmit() { const projNo = document.getElementById('projectNo').value; const name = document.getElementById('projectName').value; if(!projNo || !name) return alert('No & Name required'); const data = { proj_no: projNo, name, client: document.getElementById('projectClient').value, vessel_name: document.getElementById('projectVessel').value, budget_hours: document.getElementById('projectBudget').value, id: 'proj_'+projNo }; const id = document.getElementById('projectId').value || data.id; if (document.getElementById('projectId').value) await apiRequest(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }); else await apiRequest('/api/projects', { method: 'POST', body: JSON.stringify(data) }); await initializeState(); renderSettings(document.getElementById('mainContent')); }
 async function deleteProject() { const id = document.getElementById('projectId').value; if (!id || !confirm('Delete project?')) return; await apiRequest(`/api/projects/${id}`, { method: 'DELETE' }); await initializeState(); renderSettings(document.getElementById('mainContent')); }
 function resetProjectForm() { document.getElementById('projectId').value = ''; const form = document.getElementById('projectForm'); if (form) form.reset(); document.getElementById('projectSelect').value = ''; const delBtn = document.getElementById('deleteProjectBtn'); if (delBtn) delBtn.style.display = 'none'; }
-
-window.handleLogout = () => { state.activeProfileId = null; localStorage.removeItem('chronos_user_id'); location.reload(); };
-window.showNotification = (msg, type) => { const n = document.createElement('div'); n.className = `notification ${type}`; n.textContent = msg; n.style.padding = '12px 24px'; n.style.background = type === 'success' ? '#10b981' : '#ef4444'; n.style.color = '#fff'; n.style.borderRadius = '8px'; n.style.marginTop = '10px'; document.getElementById('notificationContainer').appendChild(n); setTimeout(() => n.remove(), 3000); };
 
 function setupGlobalEventListeners() { document.querySelectorAll('.nav-item').forEach(item => { item.addEventListener('click', (e) => switchView(e.currentTarget.getAttribute('data-view'))); }); document.getElementById('loginForm')?.addEventListener('submit', (e) => { e.preventDefault(); const empNo = document.getElementById('loginEmpNo').value; const password = document.getElementById('loginPassword').value; const emp = state.employees.find(e => e.emp_no === empNo && e.password === password); if (emp) { state.activeProfileId = emp.id; localStorage.setItem('chronos_user_id', emp.id); checkAuth(); } else { document.getElementById('loginError').classList.remove('hidden'); } }); document.getElementById('logoutBtn')?.addEventListener('click', window.handleLogout); }
 function setupNetworkMonitoring() { window.addEventListener('online', () => document.getElementById('statusDot').className = 'status-dot online'); window.addEventListener('offline', () => document.getElementById('statusDot').className = 'status-dot offline'); }
