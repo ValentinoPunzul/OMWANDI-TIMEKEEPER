@@ -194,9 +194,16 @@ apiRouter.get('/entries', async (req, res) => {
 });
 
 apiRouter.post('/entries', async (req, res) => {
-  // Basic validation, can be expanded with Zod
   if (!req.body.employee_id || !req.body.project_id) {
-    return res.status(400).json({error: "employee_id and project_id are required."});
+    return res.status(400).json({ error: 'employee_id and project_id are required.' });
+  }
+  // Enforce one active timer per employee
+  const existing = await db.ref('time_entries')
+    .orderByChild('employee_id').equalTo(req.body.employee_id).once('value');
+  const entries = Object.values(existing.val() || {});
+  const hasActive = entries.some(e => e.start_time && (!e.end_time || e.end_time === '') && (!e.total_hours || e.total_hours === 0));
+  if (hasActive) {
+    return res.status(409).json({ error: 'You already have an active timer running. Stop it before starting a new one.' });
   }
   const id = db.ref('time_entries').push().key;
   const entry = { ...req.body, id, start_time: req.body.start_time || new Date().toISOString() };
