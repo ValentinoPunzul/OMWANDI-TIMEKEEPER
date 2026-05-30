@@ -284,8 +284,59 @@ const WEBHOOK_LOG_DIR = path.join(__dirname, 'data', 'webhook_logs');
 if (!fs.existsSync(WEBHOOK_LOG_DIR)) fs.mkdirSync(WEBHOOK_LOG_DIR, { recursive: true });
 
 webhookRouter.post('/scoro', async (req, res) => {
-  // ... (rest of webhook logic remains the same)
-  res.status(200).json({ status: 'success' });
+  try {
+    const payload = req.body;
+    const timestamp = Date.now();
+    const logEntry = {
+      id: 'wh_' + timestamp,
+      received_at: new Date(timestamp).toISOString(),
+      headers: {
+        'content-type': req.headers['content-type'] || '',
+        'x-scoro-token': req.headers['x-scoro-token'] || '',
+        'x-webhook-secret': req.headers['x-webhook-secret'] || '',
+      },
+      payload,
+      fields: Object.keys(payload || {})
+    };
+
+    // Save to Firebase — keep last 50 logs
+    await db.ref('webhook_logs/' + logEntry.id).set(logEntry);
+
+    // Prune old logs — keep only most recent 50
+    const logsSnap = await db.ref('webhook_logs').orderByKey().once('value');
+    const keys = Object.keys(logsSnap.val() || {});
+    if (keys.length > 50) {
+      const toDelete = keys.slice(0, keys.length - 50);
+      const deletes = {};
+      toDelete.forEach(k => { deletes[k] = null; });
+      await db.ref('webhook_logs').update(deletes);
+    }
+
+    console.log(`[Webhook] Received from Scoro — fields: ${logEntry.fields.join(', ')}`);
+    res.status(200).json({ status: 'success', logged: logEntry.id, fields: logEntry.fields });
+  } catch(err) {
+    console.error('[Webhook] Error:', err.message);
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// Get webhook logs (protected)
+apiRouter.get('/webhook-logs', async (req, res) => {
+  const snap = await db.ref('webhook_logs').orderByKey().limitToLast(20).once('value');
+  const logs = Object.values(snap.val() || {}).reverse();
+  res.json(logs);
+});
+
+// Save field mapping
+apiRouter.post('/settings/scoro-field-map', async (req, res) => {
+  await db.ref('settings/scoro_field_map').set(req.body);
+  res.json({ success: true });
+});
+
+// Get field mapping
+apiRouter.get('/settings/scoro-field-map', async (req, res) => {
+  const snap = await db.ref('settings/scoro_field_map').once('value');
+  res.json(snap.val() || {});
 });
 
 app.use('/api/webhooks', webhookRouter);
