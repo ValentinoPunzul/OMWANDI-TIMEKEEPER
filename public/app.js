@@ -47,6 +47,7 @@ async function handleLogin(e) {
         state.idToken = idToken;
         state.activeProfileId = employee.id;
         state.userRole = employee.role || 'Employee';
+        localStorage.setItem('chronos_user_role', state.userRole);
         localStorage.setItem('chronos_id_token', idToken);
         localStorage.setItem('chronos_user_id', employee.id);
         await loadAppData();
@@ -65,6 +66,7 @@ window.handleLogout = function() {
     state.idToken=null; state.activeProfileId=null; state.userRole='Employee';
     state.employees=[]; state.projects=[]; state.timeEntries=[];
     localStorage.removeItem('chronos_id_token'); localStorage.removeItem('chronos_user_id');
+    localStorage.removeItem('chronos_user_role');
     showLogin();
 };
 

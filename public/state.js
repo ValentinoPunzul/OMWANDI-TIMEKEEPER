@@ -11,6 +11,6 @@ export const state = {
     idToken: localStorage.getItem('chronos_id_token') || null,
     activeView: 'dashboard',
     isOnline: navigator.onLine,
-    userRole: 'Employee',
+    userRole: localStorage.getItem('chronos_user_role') || 'Employee',
     scoroMapping: {},
   };

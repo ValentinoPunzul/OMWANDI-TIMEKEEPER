@@ -244,7 +244,7 @@ app.post('/api/auth/login', checkDbConnection, async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, employee.password || '');
     if (!passwordMatch) return res.status(401).json({ message: 'Invalid credentials' });
     const idToken = jwt.sign(
-      { uid: employee.id, role: employee.role || 'Employee' },
+      { uid: employee.id, role: employee.role || employee.access_role || 'Employee' },
       JWT_SECRET,
       { expiresIn: '12h' }
     );
