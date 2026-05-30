@@ -16,7 +16,7 @@ window.showNotification = function(message, type='info') {
 };
 
 const views = {
-    dashboard:  ()=>{ renderDashboard(); startDashboardClock(); },
+    dashboard:  ()=>{ renderDashboard(document.getElementById('mainContent')); startDashboardClock(); },
     timer:      ()=>renderTimerView(),
     projects:   ()=>renderProjects(),
     team:       ()=>renderTeam(),
