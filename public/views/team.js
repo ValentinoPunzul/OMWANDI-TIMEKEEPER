@@ -105,8 +105,12 @@ window.saveEmployee = async function() {
     try {
         if (id) {
             const u = await apiRequest(`/employees/${id}`,{method:'PUT',body:JSON.stringify(payload)});
-            const i = state.employees.findIndex(e=>e.id===id); if(i!==-1) state.employees[i]=u;
-        } else { state.employees.push(await apiRequest('/employees',{method:'POST',body:JSON.stringify(payload)})); }
+            const i = state.employees.findIndex(e=>e.id===id);
+            if(i!==-1) state.employees[i] = (u && u.id) ? u : { ...state.employees[i], ...payload };
+        } else {
+            const created = await apiRequest('/employees',{method:'POST',body:JSON.stringify(payload)});
+            state.employees.push(created);
+        }
         window.closeEmployeeModal(); renderTeam(); showNotification('Saved', 'success');
     } catch(e) { showNotification('Failed: '+e.message, 'error'); }
 };

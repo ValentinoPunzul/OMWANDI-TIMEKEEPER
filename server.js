@@ -120,7 +120,8 @@ apiRouter.put('/employees/:id', async (req, res) => {
     const data = { ...result.data };
     if (data.password) data.password = await bcrypt.hash(data.password, SALT_ROUNDS);
     await db.ref('employees/' + req.params.id).update(data);
-    res.json({ success: true });
+    const updated = await db.ref('employees/' + req.params.id).once('value');
+    res.json(updated.val());
 });
 
 apiRouter.delete('/employees/:id', async (req, res) => {
@@ -136,7 +137,7 @@ apiRouter.delete('/employees/:id', async (req, res) => {
     
     // Delete employee
     await db.ref('employees/' + employeeId).remove();
-    res.json({ success: true, message: 'Employee and associated time entries deleted.' });
+    res.json({ success: true, id: employeeId });
 });
 
 // Projects
@@ -158,7 +159,8 @@ apiRouter.put('/projects/:id', async (req, res) => {
     const result = projectSchema.partial().safeParse(req.body);
     if (!result.success) return res.status(400).json(result.error);
     await db.ref('projects/' + req.params.id).update(result.data);
-    res.json({ success: true });
+    const updated = await db.ref('projects/' + req.params.id).once('value');
+    res.json(updated.val());
 });
 
 apiRouter.delete('/projects/:id', async (req, res) => {
@@ -166,7 +168,7 @@ apiRouter.delete('/projects/:id', async (req, res) => {
     // Note: Consider if deleting projects should also delete time entries.
     // For now, we leave them for historical reporting.
     await db.ref('projects/' + projectId).remove();
-    res.json({ success: true });
+    res.json({ success: true, id: projectId });
 });
 
 

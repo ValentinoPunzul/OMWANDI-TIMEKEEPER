@@ -92,8 +92,12 @@ window.saveProject = async function() {
     try {
         if (id) {
             const u = await apiRequest(`/projects/${id}`, {method:'PUT', body:JSON.stringify(payload)});
-            const i = state.projects.findIndex(p => p.id === id); if (i !== -1) state.projects[i] = u;
-        } else { state.projects.push(await apiRequest('/projects', {method:'POST', body:JSON.stringify(payload)})); }
+            const i = state.projects.findIndex(p => p.id === id);
+            if (i !== -1) state.projects[i] = (u && u.id) ? u : { ...state.projects[i], ...payload };
+        } else {
+            const created = await apiRequest('/projects', {method:'POST', body:JSON.stringify(payload)});
+            state.projects.push(created);
+        }
         window.closeProjectModal(); renderProjects(); showNotification('Project saved', 'success');
     } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
 };
