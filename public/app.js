@@ -20,6 +20,18 @@ const state = {
 const API_BASE = ""; 
 const isMobile = () => window.innerWidth <= 768;
 
+function startDashboardClock() {
+    setInterval(() => {
+        const timeEl = document.getElementById('dashboardTime');
+        const dateEl = document.getElementById('dashboardDate');
+        if (timeEl && dateEl) {
+            const now = new Date();
+            timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+    }, 1000);
+}
+
 // --- INITIALIZATION ---
 window.addEventListener('DOMContentLoaded', () => {
   setupNetworkMonitoring();
@@ -378,7 +390,7 @@ function renderSettings(container) {
     
     container.innerHTML = `
         ${renderViewHeader('Settings')}
-        <div class="glass-container" style="margin-bottom:24px; border-left: 4px solid #8b5cf6;"><h3>SCORO Webhook Mapper</h3><div id="mappingForm" class="settings-form" style="margin-top:20px;"><div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="font-size:0.7rem; font-weight:700;">PROJ NO PATH</label><input type="text" id="mapProjNo" value="${state.scoroMapping.proj_no || 'entity.no'}" class="form-control"></div><div><label style="font-size:0.7rem; font-weight:700;">PROJ NAME PATH</label><input type="text" id="mapName" value="${state.scoroMapping.name || 'entity.project_name'}" class="form-control"></div></div><button class="btn primary" onclick="saveMapping()">Save Mapping</button></div></div>
+        <div class="glass-container" style="margin-bottom:24px; border-left: 4px solid #8b5cf6;"><h3>SCORO Webhook Mapper</h3><div id="mappingForm" class="settings-form" style="margin-top:20px;"><div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="font-size:0.7rem; font-weight:700;">PROJ NO PATH</label><input type="text" id="mapProjNo" value="${state.scoroMapping.proj_no || 'entity.no'}" class="form-control"></div><div><label style="font-size:0.7rem; font-weight:700;">PROJ NAME PATH</label><input type="text" id="mapName" value="${state.scoroMapping.name || 'entity.project_name'}" class="form-control"></div><div><label style="font-size:0.7rem; font-weight:700;">CLIENT PATH</label><input type="text" id="mapClient" value="${state.scoroMapping.client || 'entity.company.name'}" class="form-control"></div><div><label style="font-size:0.7rem; font-weight:700;">VESSEL NAME PATH</label><input type="text" id="mapVessel" value="${state.scoroMapping.vessel_name || 'entity.name'}" class="form-control"></div></div><button class="btn primary" onclick="saveMapping()">Save Mapping</button></div></div>
         <div class="glass-container" style="margin-bottom:24px;"><h3>User Management</h3>
             <select id="userSelect" class="form-control" style="margin:20px 0;" onchange="editEmployee(this.value)"><option value="">-- Add New Employee --</option>${userOptions}</select>
             <div id="userForm" class="settings-form"><input type="hidden" id="userId">
@@ -386,6 +398,7 @@ function renderSettings(container) {
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="font-size:0.7rem; font-weight:700;">PASSWORD</label><input type="password" id="userPassword" class="form-control"></div><div><label style="font-size:0.7rem; font-weight:700;">DESIGNATION</label><input type="text" id="userDesignation" class="form-control"></div></div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="font-size:0.7rem; font-weight:700;">DEPT</label><input type="text" id="userDepartment" class="form-control"></div><div><label style="font-size:0.7rem; font-weight:700;">SUB DEPT</label><input type="text" id="userSubDepartment" class="form-control"></div></div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="font-size:0.7rem; font-weight:700;">REPORTS TO</label><input type="text" id="userReportsTo" class="form-control"></div><div><label style="font-size:0.7rem; font-weight:700;">ROLE</label><select id="userAccessRole" class="form-control"><option value="Employee">Employee</option><option value="Viewer">Viewer</option><option value="Editor">Editor</option><option value="Administrator">Administrator</option></select></div></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;"><div><label style="font-size:0.7rem; font-weight:700;">COLOR</label><input type="color" id="userColor" value="#6366f1" style="height:44px; width:100%; border:none; background:none; padding:0;"></div></div>
                 <div class="btn-group" style="display:flex; gap:12px; margin-top:10px;"><button class="btn primary" onclick="handleUserSubmit()">Save Employee</button>${isAdmin ? `<button id="deleteEmployeeBtn" class="btn outline" style="color:#ef4444; display:none;" onclick="deleteEmployee()">Delete</button>` : ''}</div>
             </div>
         </div>
