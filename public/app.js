@@ -96,12 +96,16 @@ function updateProfileCard() {
 
 function showApp()  {
     document.getElementById('loginOverlay').style.display='none';
-    document.getElementById('appLayout').style.display='grid';
+    const layout = document.getElementById('appLayout');
+    layout.classList.remove('hidden');
+    layout.style.display='grid';
     switchView('dashboard');
 }
 
 function showLogin() {
-    document.getElementById('appLayout').style.display='none';
+    const layout = document.getElementById('appLayout');
+    layout.classList.add('hidden');
+    layout.style.display='none';
     document.getElementById('loginOverlay').style.display='flex';
 }
 
