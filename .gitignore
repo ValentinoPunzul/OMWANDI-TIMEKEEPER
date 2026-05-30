@@ -1,3 +1,6 @@
-
-# Firebase service account key
+node_modules/
+*.log
+data/hr_dispatched/
 firebase-service-account.json
+.env
+.env.local
