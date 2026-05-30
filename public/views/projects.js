@@ -5,7 +5,7 @@ import { escapeHtml } from '../utils.js';
 import { renderViewHeader } from './header.js';
 
 export function renderProjects() {
-    const main = document.getElementById('main-content');
+    const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
     const cards = state.projects.map(p => {
         const burned = state.timeEntries.filter(e => e.project_id === p.id && e.total_hours > 0).reduce((s,e) => s + e.total_hours, 0);

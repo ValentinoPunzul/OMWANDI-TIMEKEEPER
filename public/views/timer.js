@@ -7,7 +7,7 @@ import { renderViewHeader } from './header.js';
 let timerInterval = null;
 
 export function renderTimerView() {
-    const main = document.getElementById('main-content');
+    const main = document.getElementById('mainContent');
     const activeEntry = getMyActiveEntry();
     main.innerHTML = `
         ${renderViewHeader('Live Timer')}

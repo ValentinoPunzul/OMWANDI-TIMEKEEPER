@@ -5,7 +5,7 @@ import { escapeHtml } from '../utils.js';
 import { renderViewHeader } from './header.js';
 
 export function renderTimesheets() {
-    const main = document.getElementById('main-content');
+    const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
     const isForeman = state.userRole === 'Foreman';
     const projectOptions = state.projects.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');

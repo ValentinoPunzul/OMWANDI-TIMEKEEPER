@@ -5,7 +5,7 @@ import { escapeHtml } from '../utils.js';
 import { renderViewHeader } from './header.js';
 
 export function renderTeam() {
-    const main = document.getElementById('main-content');
+    const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
     let employees = isAdmin ? state.employees
         : state.employees.filter(e => e.id === state.activeProfileId || e.reports_to === state.activeProfileId);

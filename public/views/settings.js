@@ -5,7 +5,7 @@ import { escapeHtml } from '../utils.js';
 import { renderViewHeader } from './header.js';
 
 export function renderSettings() {
-    const main = document.getElementById('main-content');
+    const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
     const me = state.employees.find(e => e.id === state.activeProfileId);
     const mappingRows = Object.entries(state.scoroMapping||{}).map(([empId,scoroId]) => {
