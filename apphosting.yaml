@@ -2,3 +2,6 @@
 # This file defines how your application environment is configured.
 # Note: Sensitive environment variables like FIREBASE_SERVICE_ACCOUNT 
 # are managed directly in the Firebase Console under App Hosting > Settings.
+
+runtime: nodejs18
+entrypoint: npm start
