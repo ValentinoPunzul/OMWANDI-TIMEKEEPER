@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const { z } = require('zod');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'changeme-use-env-var';
 const SALT_ROUNDS = 10;
 
 const app = express();
@@ -59,7 +61,7 @@ const authMiddleware = async (req, res, next) => {
     return res.status(401).send('Authentication required.');
   }
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = jwt.verify(token, JWT_SECRET);
     req.user = decodedToken;
     next();
   } catch (error) {
@@ -238,9 +240,13 @@ app.post('/api/auth/login', checkDbConnection, async (req, res) => {
     const employee = Object.values(val)[0];
     const passwordMatch = await bcrypt.compare(password, employee.password || '');
     if (!passwordMatch) return res.status(401).json({ message: 'Invalid credentials' });
-    const customToken = await admin.auth().createCustomToken(employee.id, { role: employee.role || 'Employee' });
+    const idToken = jwt.sign(
+      { uid: employee.id, role: employee.role || 'Employee' },
+      JWT_SECRET,
+      { expiresIn: '12h' }
+    );
     res.json({
-      customToken,
+      idToken,
       employee: {
         id: employee.id,
         name: employee.name,

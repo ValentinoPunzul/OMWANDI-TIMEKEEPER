@@ -42,15 +42,7 @@ async function handleLogin(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ emp_no: empNo, password }) });
         if (!loginRes.ok) { const err = await loginRes.json().catch(()=>({})); showLoginError(err.message || 'Invalid credentials.'); return; }
-        const { customToken, employee } = await loginRes.json();
-
-        const { firebaseApiKey } = await fetch('/api/config').then(r => r.json());
-        const tokenRes = await fetch(
-            `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${firebaseApiKey}`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: customToken, returnSecureToken: true }) });
-        if (!tokenRes.ok) throw new Error('Token exchange failed');
-        const { idToken } = await tokenRes.json();
+        const { idToken, employee } = await loginRes.json();
 
         state.idToken = idToken;
         state.activeProfileId = employee.id;
