@@ -111,7 +111,7 @@ apiRouter.post('/employees', async (req, res) => {
     const data = { ...result.data, id };
     if (data.password) data.password = await bcrypt.hash(data.password, SALT_ROUNDS);
     await db.ref('employees/' + id).set(data);
-    res.status(201).json({ id });
+    res.status(201).json(data);
 });
 
 apiRouter.put('/employees/:id', async (req, res) => {
@@ -149,8 +149,9 @@ apiRouter.post('/projects', async (req, res) => {
     const result = projectSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json(result.error);
     const id = req.body.id || 'proj_' + Date.now();
-    await db.ref('projects/' + id).set({ ...result.data, id });
-    res.status(201).json({ id });
+    const projData = { ...result.data, id };
+    await db.ref('projects/' + id).set(projData);
+    res.status(201).json(projData);
 });
 
 apiRouter.put('/projects/:id', async (req, res) => {
@@ -198,13 +199,15 @@ apiRouter.post('/entries', async (req, res) => {
     return res.status(400).json({error: "employee_id and project_id are required."});
   }
   const id = db.ref('time_entries').push().key;
-  await db.ref('time_entries/' + id).set({ ...req.body, id, start_time: new Date().toISOString() });
-  res.status(201).json({ id });
+  const entry = { ...req.body, id, start_time: req.body.start_time || new Date().toISOString() };
+  await db.ref('time_entries/' + id).set(entry);
+  res.status(201).json(entry);
 });
 
 apiRouter.put('/entries/:id', async (req, res) => {
   await db.ref('time_entries/' + req.params.id).update(req.body);
-  res.json({ success: true });
+  const snap = await db.ref('time_entries/' + req.params.id).once('value');
+  res.json(snap.val());
 });
 
 apiRouter.delete('/entries/:id', async (req, res) => {

@@ -19,7 +19,7 @@ export function renderProjects() {
                 <div class="project-color-dot" style="background:${color}"></div>
                 <div class="project-info">
                     <div class="project-name">${escapeHtml(p.name)}</div>
-                    <div class="project-meta">${escapeHtml(p.project_number || '')} · ${escapeHtml(p.client || '')}</div>
+                    <div class="project-meta">${escapeHtml(p.proj_no || '')} · ${escapeHtml(p.client || '')}</div>
                 </div>
                 ${isAdmin ? `<div class="project-actions">
                     <button class="btn-icon" onclick="editProject('${escapeHtml(p.id)}')">✏️</button>
@@ -66,7 +66,7 @@ window.openProjectModal = function(id=null) {
         const p = state.projects.find(x => x.id === id);
         if (p) {
             document.getElementById('projectModalName').value = p.name || '';
-            document.getElementById('projectModalNumber').value = p.project_number || '';
+            document.getElementById('projectModalNumber').value = p.proj_no || '';
             document.getElementById('projectModalClient').value = p.client || '';
             document.getElementById('projectModalBudget').value = p.budget_hours || '';
             const r = document.querySelector(`input[name="projColor"][value="${p.color}"]`);
@@ -85,7 +85,7 @@ window.saveProject = async function() {
     const name = document.getElementById('projectModalName').value.trim();
     if (!name) { showNotification('Project name is required', 'warning'); return; }
     const payload = { name,
-        project_number: document.getElementById('projectModalNumber').value.trim(),
+        proj_no: document.getElementById('projectModalNumber').value.trim(),
         client: document.getElementById('projectModalClient').value.trim(),
         budget_hours: parseFloat(document.getElementById('projectModalBudget').value) || 0,
         color: document.querySelector('input[name="projColor"]:checked')?.value || '#1d4ed8' };
