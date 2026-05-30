@@ -342,5 +342,11 @@ apiRouter.get('/settings/scoro-field-map', async (req, res) => {
 app.use('/api/webhooks', webhookRouter);
 
 
+// Short alias for Scoro webhook
+app.post('/webhook', (req, res, next) => {
+  req.url = '/scoro';
+  webhookRouter(req, res, next);
+});
+
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.listen(PORT, '0.0.0.0', () => console.log(`Server on ${PORT}`));
