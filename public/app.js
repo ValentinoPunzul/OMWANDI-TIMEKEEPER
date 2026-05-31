@@ -101,7 +101,9 @@ function showApp()  {
     const layout = document.getElementById('appLayout');
     layout.classList.remove('hidden');
     layout.style.display='grid';
-    switchView('dashboard');
+    // Foremen go straight to timer view to see their team
+    const defaultView = state.userRole === 'Foreman' ? 'timer' : 'dashboard';
+    switchView(defaultView);
 }
 
 function showLogin() {
