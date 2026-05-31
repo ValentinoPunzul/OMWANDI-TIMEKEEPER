@@ -160,7 +160,7 @@ function renderFieldMapper(logs, currentMap) {
                 </select>
             </td>
             <td class="muted sample-cell">
-                ${current && logs[0]?.payload ? escapeHtml(String(getNestedValue(logs[0].payload, current) || '')) : ''}
+                ${current && logs[0]?.payload ? escapeHtml(String(getScoroValue(logs[0].payload, current) || '')) : ''}
             </td>
             <td></td>
         </tr>`;
@@ -179,7 +179,7 @@ function renderFieldMapper(logs, currentMap) {
             </select>
         </td>
         <td class="muted sample-cell">
-            ${cf.scoroField && logs[0]?.payload ? escapeHtml(String(getNestedValue(logs[0].payload, cf.scoroField) || '')) : ''}
+            ${cf.scoroField && logs[0]?.payload ? escapeHtml(String(getScoroValue(logs[0].payload, cf.scoroField) || '')) : ''}
         </td>
         <td>
             <button class="btn-icon danger" onclick="removeCustomField(${idx})" title="Remove">✕</button>
