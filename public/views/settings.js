@@ -126,14 +126,13 @@ export async function renderSettings() {
 }
 
 function renderFieldMapper(logs, currentMap) {
-    // Collect all unique fields from captured logs
     const allFields = new Set();
     logs.forEach(log => {
         if (log.fields) log.fields.forEach(f => allFields.add(f));
         if (log.payload) collectNestedKeys(log.payload, '', allFields);
     });
-
     const scoroFields = Array.from(allFields);
+    const customFields = currentMap._custom || [];
 
     if (scoroFields.length === 0) {
         return `<div class="webhook-empty">
@@ -142,30 +141,71 @@ function renderFieldMapper(logs, currentMap) {
         </div>`;
     }
 
-    const rows = APP_FIELDS.map(appField => {
-        const currentValue = currentMap[appField.key] || '';
-        const options = scoroFields.map(f =>
-            `<option value="${escapeHtml(f)}" ${f === currentValue ? 'selected' : ''}>${escapeHtml(f)}</option>`
-        ).join('');
+    const makeOptions = (current) => scoroFields.map(f =>
+        `<option value="${escapeHtml(f)}" ${f === current ? 'selected' : ''}>${escapeHtml(f)}</option>`
+    ).join('');
+
+    const standardRows = APP_FIELDS.map(appField => {
+        const current = currentMap[appField.key] || '';
         return `<tr>
-            <td><strong>${escapeHtml(appField.label)}</strong><div class="muted">${escapeHtml(appField.key)}</div></td>
-            <td style="font-size:1.3rem;text-align:center;color:#94a3b8">→</td>
+            <td>
+                <strong>${escapeHtml(appField.label)}</strong>
+                <div class="muted">${escapeHtml(appField.key)}</div>
+            </td>
+            <td class="arrow-cell">→</td>
             <td>
                 <select class="form-control field-map-select" data-app-field="${escapeHtml(appField.key)}">
                     <option value="">— Not mapped —</option>
-                    ${options}
+                    ${makeOptions(current)}
                 </select>
             </td>
-            <td class="muted" id="preview-${escapeHtml(appField.key)}">
-                ${currentValue && logs[0]?.payload ? escapeHtml(String(getNestedValue(logs[0].payload, currentValue) || '')) : ''}
+            <td class="muted sample-cell">
+                ${current && logs[0]?.payload ? escapeHtml(String(getNestedValue(logs[0].payload, current) || '')) : ''}
             </td>
+            <td></td>
         </tr>`;
     }).join('');
 
+    const customRows = customFields.map((cf, idx) => `<tr data-custom-idx="${idx}">
+        <td>
+            <input type="text" class="form-control custom-field-label" value="${escapeHtml(cf.label)}" placeholder="Field label" style="margin-bottom:.3rem" />
+            <input type="text" class="form-control custom-field-key" value="${escapeHtml(cf.key)}" placeholder="Field key (no spaces)" style="font-size:.75rem" />
+        </td>
+        <td class="arrow-cell">→</td>
+        <td>
+            <select class="form-control field-map-select" data-app-field="${escapeHtml(cf.key)}" data-custom="true">
+                <option value="">— Not mapped —</option>
+                ${makeOptions(cf.scoroField || '')}
+            </select>
+        </td>
+        <td class="muted sample-cell">
+            ${cf.scoroField && logs[0]?.payload ? escapeHtml(String(getNestedValue(logs[0].payload, cf.scoroField) || '')) : ''}
+        </td>
+        <td>
+            <button class="btn-icon danger" onclick="removeCustomField(${idx})" title="Remove">✕</button>
+        </td>
+    </tr>`).join('');
+
     return `
-        <table class="timesheet-table" style="margin-bottom:1rem">
-            <thead><tr><th>OMWANDI Field</th><th></th><th>Scoro Field</th><th>Sample Value</th></tr></thead>
-            <tbody>${rows}</tbody>
+        <table class="timesheet-table" style="margin-bottom:1rem" id="fieldMapTable">
+            <thead>
+                <tr>
+                    <th>OMWANDI Field</th>
+                    <th></th>
+                    <th>Scoro Field</th>
+                    <th>Sample Value</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="standardFieldRows">${standardRows}</tbody>
+            <tbody id="customFieldRows">${customRows}</tbody>
+            <tbody>
+                <tr>
+                    <td colspan="5">
+                        <button class="btn outline" style="width:100%;margin-top:.5rem" onclick="addCustomField()">+ Add Custom Field</button>
+                    </td>
+                </tr>
+            </tbody>
         </table>
         <button class="btn primary" onclick="saveFieldMap()">Save Field Mapping</button>`;
 }
@@ -215,12 +255,58 @@ window.refreshWebhookLogs = async function() {
     if (mapArea) mapArea.innerHTML = renderFieldMapper(webhookLogs, fieldMap);
 };
 
+window.addCustomField = function() {
+    const tbody = document.getElementById('customFieldRows');
+    if (!tbody) return;
+    const idx = tbody.querySelectorAll('tr').length;
+    const allFields = Array.from(document.querySelectorAll('.field-map-select option:not([value=""])'))
+        .map(o => o.value).filter((v,i,a) => a.indexOf(v) === i);
+    const options = allFields.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('');
+    const tr = document.createElement('tr');
+    tr.dataset.customIdx = idx;
+    tr.innerHTML = `
+        <td>
+            <input type="text" class="form-control custom-field-label" placeholder="Field label" style="margin-bottom:.3rem" />
+            <input type="text" class="form-control custom-field-key" placeholder="Field key (no spaces)" style="font-size:.75rem" />
+        </td>
+        <td class="arrow-cell">→</td>
+        <td>
+            <select class="form-control field-map-select" data-app-field="" data-custom="true">
+                <option value="">— Not mapped —</option>
+                ${options}
+            </select>
+        </td>
+        <td class="muted sample-cell"></td>
+        <td><button class="btn-icon danger" onclick="this.closest('tr').remove()" title="Remove">✕</button></td>`;
+    // sync key input → select data-app-field
+    tr.querySelector('.custom-field-key').addEventListener('input', function() {
+        tr.querySelector('.field-map-select').dataset.appField = this.value.trim().replace(/\s+/g,'_');
+    });
+    tbody.appendChild(tr);
+};
+
+window.removeCustomField = function(idx) {
+    document.querySelector(`tr[data-custom-idx="${idx}"]`)?.remove();
+};
+
 window.saveFieldMap = async function() {
-    const selects = document.querySelectorAll('.field-map-select');
     const map = {};
-    selects.forEach(sel => {
+    // Standard fields
+    document.querySelectorAll('#standardFieldRows .field-map-select').forEach(sel => {
         if (sel.value) map[sel.dataset.appField] = sel.value;
     });
+    // Custom fields
+    const custom = [];
+    document.querySelectorAll('#customFieldRows tr').forEach(row => {
+        const label = row.querySelector('.custom-field-label')?.value?.trim();
+        const key   = row.querySelector('.custom-field-key')?.value?.trim().replace(/\s+/g,'_');
+        const scoro = row.querySelector('.field-map-select')?.value;
+        if (label && key) {
+            custom.push({ label, key, scoroField: scoro || '' });
+            if (scoro) map[key] = scoro;
+        }
+    });
+    map._custom = custom;
     fieldMap = map;
     try {
         await apiRequest('/settings/scoro-field-map', { method: 'POST', body: JSON.stringify(map) });
