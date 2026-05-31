@@ -122,4 +122,15 @@ async function boot() {
     } else { showLogin(); }
 }
 
+window.toggleMobileMore = function() {
+    const drawer = document.getElementById('mobileMoreDrawer');
+    if (drawer) drawer.classList.toggle('open');
+};
+
+// Wire up More drawer items to switchView
+document.addEventListener('click', e => {
+    const item = e.target.closest('.mobile-more-item[data-view]');
+    if (item) switchView(item.dataset.view);
+});
+
 document.addEventListener('DOMContentLoaded', boot);
