@@ -333,19 +333,29 @@ webhookRouter.post('/scoro', async (req, res) => {
         return cur;
       };
 
-      // Try common Scoro ID locations
-      const scoroId = getVal(payload, 'entity.id') || getVal(payload, 'id') ||
-                      getVal(payload, 'object_id') || getVal(payload, 'data.id');
+      // Scoro-specific ID and field defaults
+      const scoroId = getVal(payload, 'entity.project_id') || getVal(payload, 'entityId') ||
+                      getVal(payload, 'entity.id') || getVal(payload, 'id');
 
-      console.log('[Webhook] scoroId:', scoroId, '| fieldMap keys:', Object.keys(fieldMap).join(', '));
+      console.log('[Webhook] scoroId:', scoroId, '| entityType:', payload.entityType);
 
       if (scoroId) {
         const projectData = { scoro_id: String(scoroId), updated_from_scoro: new Date().toISOString() };
 
-        // Map standard fields
+        // Standard field defaults from known Scoro structure (override with field map if set)
+        const scoroDefaults = {
+          name:         'entity.project_name',
+          proj_no:      'entity.no',
+          client:       'entity.company_name',
+          budget_hours: null,
+          vessel_name:  null,
+        };
+
+        // Map standard fields — use field map if configured, else use Scoro defaults
         ['name','proj_no','client','budget_hours','vessel_name'].forEach(appKey => {
-          if (fieldMap[appKey]) {
-            const val = getVal(payload, fieldMap[appKey]);
+          const path = fieldMap[appKey] || scoroDefaults[appKey];
+          if (path) {
+            const val = getVal(payload, path);
             if (val !== undefined && val !== null) {
               projectData[appKey] = appKey === 'budget_hours' ? parseFloat(val) || 0 : String(val);
             }
