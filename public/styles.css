@@ -538,3 +538,19 @@ details summary::-webkit-details-marker { color:#94a3b8; }
     .mobile-nav-item span { font-size:.6rem; }
     .mobile-nav-item svg { width:18px; height:18px; }
 }
+
+/* ── Settings Tabs ───────────────────────────────────────────── */
+.settings-tabs { display:flex; gap:.25rem; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:1.5rem; flex-wrap:wrap; }
+.settings-tab { background:none; border:none; color:#94a3b8; font-size:.875rem; font-weight:500; padding:.6rem 1.1rem; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:.15s; }
+.settings-tab:hover { color:#fff; }
+.settings-tab.active { color:#fff; border-bottom-color:#1d4ed8; }
+.settings-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); border-radius:12px; padding:1.5rem; margin-bottom:1rem; }
+.settings-card h3 { margin:0 0 .35rem; font-size:1rem; }
+.settings-tab-content { max-width:900px; }
+
+/* ── Ref Data Chips ──────────────────────────────────────────── */
+.ref-chips { display:flex; flex-wrap:wrap; gap:.5rem; }
+.ref-chip { display:inline-flex; align-items:center; gap:.35rem; padding:.35rem .7rem; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:20px; font-size:.85rem; }
+.ref-chip-label { font-weight:500; }
+.ref-chip-edit, .ref-chip-del { background:none; border:none; cursor:pointer; font-size:.75rem; padding:0 .1rem; opacity:.6; line-height:1; }
+.ref-chip-edit:hover, .ref-chip-del:hover { opacity:1; }
