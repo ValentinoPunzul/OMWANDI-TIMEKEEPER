@@ -233,16 +233,41 @@ function renderLogs(logs) {
 function collectNestedKeys(obj, prefix, result) {
     for (const [k, v] of Object.entries(obj || {})) {
         const key = prefix ? prefix + '.' + k : k;
-        result.add(key);
-        if (v && typeof v === 'object' && !Array.isArray(v)) {
-            collectNestedKeys(v, key, result);
+        // Detect Scoro custom_fields pattern: array of {id, name, value}
+        if (Array.isArray(v) && v.length > 0 && v[0]?.id && 'value' in v[0]) {
+            v.forEach(item => {
+                if (item.id) {
+                    // Add as custom_fields.c_vesselname style key
+                    result.add(key + '.' + item.id);
+                }
+            });
+        } else {
+            result.add(key);
+            if (v && typeof v === 'object' && !Array.isArray(v)) {
+                collectNestedKeys(v, key, result);
+            }
         }
     }
 }
 
-function getNestedValue(obj, path) {
-    return path.split('.').reduce((acc, key) => acc?.[key], obj);
+// Get nested value — handles Scoro custom_fields array pattern
+function getScoroValue(payload, path) {
+    const parts = path.split('.');
+    let current = payload;
+    for (let i = 0; i < parts.length; i++) {
+        if (current === null || current === undefined) return undefined;
+        // Check if current is a custom_fields-style array
+        if (Array.isArray(current) && current[0]?.id !== undefined) {
+            const match = current.find(item => item.id === parts[i]);
+            current = match?.value;
+        } else {
+            current = current[parts[i]];
+        }
+    }
+    return current;
 }
+
+
 
 // ── Global handlers ───────────────────────────────────────────────────────────
 
