@@ -320,57 +320,75 @@ webhookRouter.post('/scoro', async (req, res) => {
       const fieldMap = mapSnap.val() || {};
       const custom = fieldMap._custom || [];
 
-      if (Object.keys(fieldMap).length > 1) {
-        const getVal = (obj, path) => {
-          const parts = path.split('.');
-          let cur = obj;
-          for (const p of parts) {
-            if (Array.isArray(cur) && cur[0]?.id !== undefined) {
-              cur = cur.find(i => i.id === p)?.value;
-            } else { cur = cur?.[p]; }
-          }
-          return cur;
-        };
-
-        const scoroId = getVal(payload, 'entity.id') || getVal(payload, 'id');
-        if (scoroId) {
-          const projectData = { scoro_id: String(scoroId), updated_from_scoro: new Date().toISOString() };
-
-          // Map standard fields
-          ['name','proj_no','client','budget_hours','vessel_name'].forEach(appKey => {
-            if (fieldMap[appKey]) {
-              const val = getVal(payload, fieldMap[appKey]);
-              if (val !== undefined && val !== null) projectData[appKey] = appKey === 'budget_hours' ? parseFloat(val) || 0 : String(val);
-            }
-          });
-
-          // Map custom fields
-          custom.forEach(cf => {
-            if (cf.key && cf.scoroField) {
-              const val = getVal(payload, cf.scoroField);
-              if (val !== undefined && val !== null) projectData[cf.key] = String(val);
-            }
-          });
-
-          // Find existing project by scoro_id or create new
-          const existingSnap = await db.ref('projects').orderByChild('scoro_id').equalTo(String(scoroId)).once('value');
-          const existing = existingSnap.val();
-          if (existing) {
-            const existingId = Object.keys(existing)[0];
-            projectData.id = existingId;
-            await db.ref('projects/' + existingId).update(projectData);
-            console.log(`[Webhook] Updated project: ${projectData.name} (${existingId})`);
-          } else {
-            const newId = 'proj_' + Date.now();
-            projectData.id = newId;
-            projectData.color = '#1d4ed8';
-            await db.ref('projects/' + newId).set(projectData);
-            console.log(`[Webhook] Created project: ${projectData.name} (${newId})`);
-          }
+      const getVal = (obj, path) => {
+        if (!path || !obj) return undefined;
+        const parts = path.split('.');
+        let cur = obj;
+        for (const p of parts) {
+          if (cur === null || cur === undefined) return undefined;
+          if (Array.isArray(cur) && cur[0]?.id !== undefined) {
+            cur = cur.find(i => i.id === p)?.value;
+          } else { cur = cur[p]; }
         }
+        return cur;
+      };
+
+      // Try common Scoro ID locations
+      const scoroId = getVal(payload, 'entity.id') || getVal(payload, 'id') ||
+                      getVal(payload, 'object_id') || getVal(payload, 'data.id');
+
+      console.log('[Webhook] scoroId:', scoroId, '| fieldMap keys:', Object.keys(fieldMap).join(', '));
+
+      if (scoroId) {
+        const projectData = { scoro_id: String(scoroId), updated_from_scoro: new Date().toISOString() };
+
+        // Map standard fields
+        ['name','proj_no','client','budget_hours','vessel_name'].forEach(appKey => {
+          if (fieldMap[appKey]) {
+            const val = getVal(payload, fieldMap[appKey]);
+            if (val !== undefined && val !== null) {
+              projectData[appKey] = appKey === 'budget_hours' ? parseFloat(val) || 0 : String(val);
+            }
+          }
+        });
+
+        // Map custom fields
+        custom.forEach(cf => {
+          if (cf.key && cf.scoroField) {
+            const val = getVal(payload, cf.scoroField);
+            if (val !== undefined && val !== null) projectData[cf.key] = String(val);
+          }
+        });
+
+        // Fallback name if not mapped
+        if (!projectData.name) {
+          projectData.name = getVal(payload, 'entity.name') || getVal(payload, 'name') || 'Untitled Project';
+        }
+
+        console.log('[Webhook] projectData to save:', JSON.stringify(projectData));
+
+        // Find existing project by scoro_id — scan all projects (avoids index requirement)
+        const allProjectsSnap = await db.ref('projects').once('value');
+        const allProjects = allProjectsSnap.val() || {};
+        const existingEntry = Object.entries(allProjects).find(([,p]) => String(p.scoro_id) === String(scoroId));
+
+        if (existingEntry) {
+          const [existingId] = existingEntry;
+          projectData.id = existingId;
+          await db.ref('projects/' + existingId).update(projectData);
+          console.log(`[Webhook] Updated project: ${projectData.name} (${existingId})`);
+        } else {
+          const newId = 'proj_' + Date.now();
+          projectData.id = newId;
+          projectData.color = '#1d4ed8';
+          await db.ref('projects/' + newId).set(projectData);
+          console.log(`[Webhook] Created project: ${projectData.name} (${newId})`);
+        }
+      } else {
+        console.warn('[Webhook] No scoroId found in payload. Keys received:', Object.keys(payload || {}).join(', '));
       }
     } catch(mapErr) {
-      console.error('[Webhook] Field mapping error:', mapErr.message);
+      console.error('[Webhook] Field mapping error:', mapErr.message, mapErr.stack);
     }
 
     res.status(200).json({ status: 'success', logged: logEntry.id, fields: logEntry.fields });
