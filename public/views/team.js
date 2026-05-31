@@ -9,6 +9,10 @@ let _designations = [];
 let _departments = [];
 let _roles = [];
 
+// Sort state
+let _sortCol = 'name';
+let _sortDir = 'asc';
+
 export async function renderTeam() {
     const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
@@ -20,8 +24,29 @@ export async function renderTeam() {
         apiRequest('/ref/roles').catch(() => []),
     ]);
 
-    let employees = isAdmin ? state.employees
+    let employees = isAdmin ? [...state.employees]
         : state.employees.filter(e => e.id === state.activeProfileId || e.reports_to === state.activeProfileId);
+
+    // Apply sort
+    employees.sort((a, b) => {
+        let valA = '', valB = '';
+        if (_sortCol === 'name')        { valA = a.name||''; valB = b.name||''; }
+        else if (_sortCol === 'designation') { valA = a.designation||''; valB = b.designation||''; }
+        else if (_sortCol === 'department')  { valA = a.department||''; valB = b.department||''; }
+        else if (_sortCol === 'role')        { valA = a.role||''; valB = b.role||''; }
+        else if (_sortCol === 'reports_to')  {
+            const ma = state.employees.find(e => e.id === a.reports_to);
+            const mb = state.employees.find(e => e.id === b.reports_to);
+            valA = ma?.name||''; valB = mb?.name||'';
+        }
+        else if (_sortCol === 'hours') {
+            const ha = state.timeEntries.filter(e => e.employee_id === a.id && e.total_hours > 0).reduce((s,e) => s+e.total_hours, 0);
+            const hb = state.timeEntries.filter(e => e.employee_id === b.id && e.total_hours > 0).reduce((s,e) => s+e.total_hours, 0);
+            return _sortDir === 'asc' ? ha - hb : hb - ha;
+        }
+        const cmp = valA.localeCompare(valB);
+        return _sortDir === 'asc' ? cmp : -cmp;
+    });
 
     const rows = employees.map(emp => {
         const hours = state.timeEntries.filter(e => e.employee_id === emp.id && e.total_hours > 0).reduce((s,e) => s+e.total_hours, 0);
@@ -60,7 +85,15 @@ export async function renderTeam() {
         <div class="view-toolbar">${isAdmin ? `<button class="btn primary" onclick="openEmployeeModal()">+ Add Member</button>` : ''}</div>
         <div class="table-wrapper glass-panel">
             <table class="timesheet-table">
-                <thead><tr><th>Employee</th><th>Designation</th><th>Department</th><th>Role</th><th>Reports To</th><th>Total Hours</th><th></th></tr></thead>
+                <thead><tr>
+    ${['name','designation','department','role','reports_to','hours'].map((col, i) => {
+        const labels = ['Employee','Designation','Department','Role','Reports To','Hours'];
+        const active = _sortCol === col;
+        const arrow = active ? (_sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+        return `<th class="sortable-th ${active?'sort-active':''}" onclick="sortTeamBy('${col}')" style="cursor:pointer;user-select:none">${labels[i]}${arrow}</th>`;
+    }).join('')}
+    <th></th>
+</tr></thead>
                 <tbody>${rows || '<tr><td colspan="7" class="empty-state">No team members found.</td></tr>'}</tbody>
             </table>
         </div>
@@ -100,6 +133,12 @@ export async function renderTeam() {
             </div>
         </div>`;
 }
+
+window.sortTeamBy = function(col) {
+    if (_sortCol === col) { _sortDir = _sortDir === 'asc' ? 'desc' : 'asc'; }
+    else { _sortCol = col; _sortDir = 'asc'; }
+    renderTeam();
+};
 
 window.openEmployeeModal = function(id=null) {
     document.getElementById('empModalTitle').textContent = id ? 'Edit Member' : 'Add Team Member';

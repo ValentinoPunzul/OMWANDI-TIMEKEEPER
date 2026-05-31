@@ -584,3 +584,7 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 @media (max-width: 768px) {
     .mobile-nav { display: grid; }
 }
+
+/* ── Sortable table headers ──────────────────────────────────── */
+.sortable-th:hover { color:#fff; }
+.sort-active { color:#1d4ed8 !important; }
