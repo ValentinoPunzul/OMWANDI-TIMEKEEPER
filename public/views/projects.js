@@ -32,7 +32,7 @@ export async function renderProjects() {
         return `
         <div class="project-card glass-panel">
             <div class="project-card-header">
-                <div class="project-color-dot" style="background:${color}"></div>
+                
                 <div class="project-info">
                     <div class="project-name">${p.proj_no ? '[' + escapeHtml(p.proj_no) + '] ' : ''}${escapeHtml(p.name)}</div>
                     <div class="project-meta">${escapeHtml(p.client || '')}</div>
