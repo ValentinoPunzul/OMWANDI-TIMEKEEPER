@@ -377,10 +377,13 @@ webhookRouter.post('/scoro', async (req, res) => {
 
         console.log('[Webhook] projectData to save:', JSON.stringify(projectData));
 
-        // Find existing project by scoro_id — scan all projects (avoids index requirement)
+        // Find existing project by scoro_id OR proj_no fallback
         const allProjectsSnap = await db.ref('projects').once('value');
         const allProjects = allProjectsSnap.val() || {};
-        const existingEntry = Object.entries(allProjects).find(([,p]) => String(p.scoro_id) === String(scoroId));
+        const existingEntry = Object.entries(allProjects).find(([,p]) =>
+          String(p.scoro_id) === String(scoroId) ||
+          (projectData.proj_no && String(p.proj_no) === String(projectData.proj_no))
+        );
 
         if (existingEntry) {
           const [existingId] = existingEntry;
