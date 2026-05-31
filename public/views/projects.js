@@ -4,15 +4,31 @@ import { apiRequest } from '../api.js';
 import { escapeHtml } from '../utils.js';
 import { renderViewHeader } from './header.js';
 
-export function renderProjects() {
+export async function renderProjects() {
     const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
+
+    // Load custom field definitions from saved field map
+    let customFields = [];
+    try {
+        const fm = await apiRequest('/settings/scoro-field-map').catch(() => ({}));
+        customFields = fm._custom || [];
+    } catch(e) {}
+
     const cards = state.projects.map(p => {
         const burned = state.timeEntries.filter(e => e.project_id === p.id && e.total_hours > 0).reduce((s,e) => s + e.total_hours, 0);
         const budget = p.budget_hours || 0;
         const pct = budget > 0 ? Math.min((burned / budget) * 100, 100) : 0;
         const statusClass = pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : 'ok';
         const color = escapeHtml(p.color || '#1d4ed8');
+
+        // Build extra fields rows
+        const extraRows = [];
+        if (p.vessel_name) extraRows.push(`<div class="custom-field-row"><span class="custom-field-label">Vessel</span><span class="custom-field-value">${escapeHtml(p.vessel_name)}</span></div>`);
+        customFields.filter(cf => p[cf.key]).forEach(cf => {
+            extraRows.push(`<div class="custom-field-row"><span class="custom-field-label">${escapeHtml(cf.label)}</span><span class="custom-field-value">${escapeHtml(String(p[cf.key]))}</span></div>`);
+        });
+
         return `
         <div class="project-card glass-panel">
             <div class="project-card-header">
@@ -31,8 +47,10 @@ export function renderProjects() {
                 <span class="budget-value ${statusClass}">${burned.toFixed(1)}h / ${budget > 0 ? budget + 'h' : '—'}</span>
             </div>
             ${budget > 0 ? `<div class="progress-bar-bg"><div class="progress-bar-fill ${statusClass}" style="width:${pct.toFixed(1)}%"></div></div>` : ''}
+            ${extraRows.length ? `<div class="project-custom-fields">${extraRows.join('')}</div>` : ''}
         </div>`;
     }).join('');
+
     main.innerHTML = `
         ${renderViewHeader('Projects')}
         <div class="view-toolbar">${isAdmin ? `<button class="btn primary" onclick="openProjectModal()">+ New Project</button>` : ''}</div>
