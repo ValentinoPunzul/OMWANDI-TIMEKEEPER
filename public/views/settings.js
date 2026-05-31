@@ -21,11 +21,15 @@ export async function renderSettings() {
     const isAdmin = state.userRole === 'Administrator';
     const me = state.employees.find(e => e.id === state.activeProfileId);
 
-    // Load logs and field map in parallel
+    // Load logs, field map and reference data in parallel
+    let refData = { designations: [], departments: [], roles: [] };
     if (isAdmin) {
-        [webhookLogs, fieldMap] = await Promise.all([
+        [webhookLogs, fieldMap, refData.designations, refData.departments, refData.roles] = await Promise.all([
             apiRequest('/webhook-logs').catch(() => []),
-            apiRequest('/settings/scoro-field-map').catch(() => ({}))
+            apiRequest('/settings/scoro-field-map').catch(() => ({})),
+            apiRequest('/ref/designations').catch(() => []),
+            apiRequest('/ref/departments').catch(() => []),
+            apiRequest('/ref/roles').catch(() => []),
         ]);
     }
 
@@ -103,6 +107,17 @@ export async function renderSettings() {
                 </div>
                 <div id="webhookLogsArea">
                     ${renderLogs(webhookLogs)}
+                </div>
+            </div>
+
+            <!-- Reference Data -->
+            <div class="glass-panel settings-section" style="grid-column: 1 / -1">
+                <h3>Reference Data</h3>
+                <p class="setting-description">Manage the lists used for Designation, Department and Role fields on employee records.</p>
+                <div class="ref-data-grid">
+                    ${renderRefPanel('designations', 'Designations', refData.designations)}
+                    ${renderRefPanel('departments', 'Departments', refData.departments)}
+                    ${renderRefPanel('roles', 'Roles', refData.roles)}
                 </div>
             </div>
 
@@ -269,6 +284,26 @@ function getScoroValue(payload, path) {
 
 
 
+function renderRefPanel(type, title, items) {
+    const rows = items.map(item => `
+        <div class="ref-item" data-id="${escapeHtml(item.id)}" data-type="${type}">
+            <span class="ref-item-name" id="ref-name-${escapeHtml(item.id)}">${escapeHtml(item.name)}</span>
+            <div class="ref-item-actions">
+                <button class="btn-icon" onclick="editRefItem('${type}','${escapeHtml(item.id)}','${escapeHtml(item.name)}')" title="Edit">✏️</button>
+                <button class="btn-icon danger" onclick="deleteRefItem('${type}','${escapeHtml(item.id)}')" title="Delete">🗑️</button>
+            </div>
+        </div>`).join('');
+    return `
+        <div class="ref-panel glass-panel">
+            <h4 style="margin:0 0 .75rem">${title}</h4>
+            <div class="ref-list" id="ref-list-${type}">${rows || '<p class="muted" style="font-size:.8rem">No items yet.</p>'}</div>
+            <div class="ref-add-row">
+                <input type="text" class="form-control" id="ref-input-${type}" placeholder="Add new ${title.toLowerCase().slice(0,-1)}..." />
+                <button class="btn primary" onclick="addRefItem('${type}')">Add</button>
+            </div>
+        </div>`;
+}
+
 // ── Global handlers ───────────────────────────────────────────────────────────
 
 window.refreshWebhookLogs = async function() {
@@ -364,6 +399,52 @@ window.saveScoroMapping = async function() {
     try {
         await apiRequest('/settings/mapping', { method: 'POST', body: JSON.stringify({ mapping: state.scoroMapping }) });
         showNotification('Scoro mapping saved', 'success');
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
+};
+
+window.addRefItem = async function(type) {
+    const input = document.getElementById('ref-input-' + type);
+    const name = input?.value?.trim();
+    if (!name) { showNotification('Enter a name first', 'warning'); return; }
+    try {
+        const item = await apiRequest('/ref/' + type, { method: 'POST', body: JSON.stringify({ name }) });
+        const list = document.getElementById('ref-list-' + type);
+        if (list) {
+            const emptyMsg = list.querySelector('.muted');
+            if (emptyMsg) emptyMsg.remove();
+            const div = document.createElement('div');
+            div.className = 'ref-item';
+            div.dataset.id = item.id;
+            div.dataset.type = type;
+            div.innerHTML = `<span class="ref-item-name" id="ref-name-${escapeHtml(item.id)}">${escapeHtml(item.name)}</span>
+                <div class="ref-item-actions">
+                    <button class="btn-icon" onclick="editRefItem('${type}','${escapeHtml(item.id)}','${escapeHtml(item.name)}')" title="Edit">✏️</button>
+                    <button class="btn-icon danger" onclick="deleteRefItem('${type}','${escapeHtml(item.id)}')" title="Delete">🗑️</button>
+                </div>`;
+            list.appendChild(div);
+        }
+        input.value = '';
+        showNotification(`Added to ${type}`, 'success');
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
+};
+
+window.editRefItem = async function(type, id, currentName) {
+    const newName = prompt('Edit name:', currentName);
+    if (!newName?.trim() || newName.trim() === currentName) return;
+    try {
+        await apiRequest(`/ref/${type}/${id}`, { method: 'PUT', body: JSON.stringify({ name: newName.trim() }) });
+        const el = document.getElementById('ref-name-' + id);
+        if (el) el.textContent = newName.trim();
+        showNotification('Updated', 'success');
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
+};
+
+window.deleteRefItem = async function(type, id) {
+    if (!confirm('Delete this item?')) return;
+    try {
+        await apiRequest(`/ref/${type}/${id}`, { method: 'DELETE' });
+        document.querySelector(`.ref-item[data-id="${id}"]`)?.remove();
+        showNotification('Deleted', 'success');
     } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
 };
 

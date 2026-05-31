@@ -522,3 +522,12 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 .custom-field-row { display:flex; justify-content:space-between; align-items:center; font-size:.8rem; }
 .custom-field-label { color:#94a3b8; }
 .custom-field-value { font-weight:600; text-align:right; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ── Reference Data Panels ───────────────────────────────────── */
+.ref-data-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:1rem; }
+.ref-panel { padding:1rem; }
+.ref-list { display:flex; flex-direction:column; gap:.4rem; margin-bottom:.75rem; min-height:40px; max-height:220px; overflow-y:auto; }
+.ref-item { display:flex; align-items:center; justify-content:space-between; padding:.35rem .5rem; border-radius:6px; background:rgba(255,255,255,0.04); }
+.ref-item-name { font-size:.875rem; }
+.ref-item-actions { display:flex; gap:.15rem; flex-shrink:0; }
+.ref-add-row { display:flex; gap:.5rem; }

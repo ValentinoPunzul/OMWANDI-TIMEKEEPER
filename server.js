@@ -274,6 +274,39 @@ app.post('/api/auth/login', checkDbConnection, async (req, res) => {
   }
 });
 
+// --- Reference Data (Designations, Departments, Roles) ---
+const REF_TYPES = ['designations', 'departments', 'roles'];
+
+apiRouter.get('/ref/:type', async (req, res) => {
+  if (!REF_TYPES.includes(req.params.type)) return res.status(400).json({ error: 'Invalid type' });
+  const snap = await db.ref('settings/ref/' + req.params.type).once('value');
+  res.json(Object.values(snap.val() || {}));
+});
+
+apiRouter.post('/ref/:type', async (req, res) => {
+  if (!REF_TYPES.includes(req.params.type)) return res.status(400).json({ error: 'Invalid type' });
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
+  const id = 'ref_' + Date.now();
+  const item = { id, name: name.trim() };
+  await db.ref('settings/ref/' + req.params.type + '/' + id).set(item);
+  res.status(201).json(item);
+});
+
+apiRouter.put('/ref/:type/:id', async (req, res) => {
+  if (!REF_TYPES.includes(req.params.type)) return res.status(400).json({ error: 'Invalid type' });
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
+  await db.ref('settings/ref/' + req.params.type + '/' + req.params.id).update({ name: name.trim() });
+  res.json({ id: req.params.id, name: name.trim() });
+});
+
+apiRouter.delete('/ref/:type/:id', async (req, res) => {
+  if (!REF_TYPES.includes(req.params.type)) return res.status(400).json({ error: 'Invalid type' });
+  await db.ref('settings/ref/' + req.params.type + '/' + req.params.id).remove();
+  res.json({ success: true });
+});
+
 app.use('/api', apiRouter);
 
 // --- Unprotected Webhook Endpoint ---
