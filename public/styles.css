@@ -588,3 +588,19 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 /* ── Sortable table headers ──────────────────────────────────── */
 .sortable-th:hover { color:#fff; }
 .sort-active { color:#1d4ed8 !important; }
+
+/* ── Foreman Timer View ──────────────────────────────────────── */
+.foreman-view { display:flex; flex-direction:column; gap:1.25rem; }
+.foreman-group { }
+.foreman-group-label { font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#94a3b8; margin-bottom:.5rem; padding-left:.25rem; }
+.foreman-emp-card { display:flex; align-items:center; justify-content:space-between; padding:.85rem 1rem; margin-bottom:.5rem; cursor:pointer; transition:.15s; }
+.foreman-emp-card:hover { border-color:rgba(255,255,255,0.2); }
+.foreman-emp-card.timer-running { border-color:#10b981; background:rgba(16,185,129,0.06); }
+.foreman-emp-left { display:flex; align-items:center; gap:.75rem; flex:1; min-width:0; }
+.foreman-emp-info { min-width:0; }
+.foreman-active-proj { font-size:.75rem; color:#10b981; margin-top:.15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.foreman-emp-right { display:flex; align-items:center; flex-shrink:0; }
+.foreman-timer-badge { display:flex; align-items:center; gap:.5rem; }
+.foreman-timer-badge.running .foreman-elapsed { font-family:monospace; font-size:.9rem; font-weight:700; color:#10b981; min-width:70px; text-align:right; }
+.foreman-selected-emp { display:flex; align-items:center; gap:.85rem; padding:.85rem 1rem; margin-bottom:1rem; }
+.btn-sm { padding:.3rem .7rem; font-size:.78rem; border-radius:6px; }

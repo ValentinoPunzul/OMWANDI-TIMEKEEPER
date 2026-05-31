@@ -205,7 +205,7 @@ apiRouter.post('/entries', async (req, res) => {
   const entries = Object.values(existing.val() || {});
   const hasActive = entries.some(e => e.start_time && (!e.end_time || e.end_time === '') && (!e.total_hours || e.total_hours === 0));
   if (hasActive) {
-    return res.status(409).json({ error: 'You already have an active timer running. Stop it before starting a new one.' });
+    return res.status(409).json({ error: 'This employee already has an active timer running.' });
   }
   const id = db.ref('time_entries').push().key;
   const entry = { ...req.body, id, start_time: req.body.start_time || new Date().toISOString() };

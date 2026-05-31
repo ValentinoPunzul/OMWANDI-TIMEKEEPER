@@ -5,8 +5,192 @@ import { escapeHtml } from '../utils.js';
 import { renderViewHeader } from './header.js';
 
 let timerInterval = null;
+let _selectedEmpId = null; // Foreman: currently selected employee
 
+// ── Entry point ───────────────────────────────────────────────────────────────
 export function renderTimerView() {
+    const isForeman = state.userRole === 'Foreman';
+    if (isForeman) {
+        renderForemanView();
+    } else {
+        renderMyTimer();
+    }
+}
+
+// ── FOREMAN VIEW ──────────────────────────────────────────────────────────────
+function renderForemanView() {
+    const main = document.getElementById('mainContent');
+    const me = state.employees.find(e => e.id === state.activeProfileId);
+
+    // Build team: direct reports + their direct reports
+    const directReports = state.employees.filter(e => e.reports_to === state.activeProfileId);
+    const subReports = state.employees.filter(e =>
+        directReports.some(dr => dr.id === e.reports_to)
+    );
+    const teamIds = new Set([...directReports, ...subReports].map(e => e.id));
+    const team = state.employees.filter(e => teamIds.has(e.id));
+
+    if (team.length === 0) {
+        main.innerHTML = `${renderViewHeader('Live Timer')}
+            <div class="glass-panel" style="padding:2rem;text-align:center">
+                <p class="muted">No team members found under your supervision.</p>
+            </div>`;
+        return;
+    }
+
+    // Group by team leader (direct reports to foreman)
+    const groups = {};
+    directReports.forEach(leader => { groups[leader.id] = { leader, members: [] }; });
+
+    team.forEach(emp => {
+        if (directReports.find(dr => dr.id === emp.id)) return; // skip leaders themselves
+        const leader = directReports.find(dr => dr.id === emp.reports_to);
+        if (leader) groups[leader.id].members.push(emp);
+        else groups['_other'] = groups['_other'] || { leader: null, members: [] }, groups['_other'].members.push(emp);
+    });
+
+    // If a specific employee is selected, show their timer form
+    if (_selectedEmpId) {
+        const selectedEmp = team.find(e => e.id === _selectedEmpId);
+        if (selectedEmp) {
+            renderForemanTimerFor(main, selectedEmp);
+            return;
+        }
+    }
+
+    // Build the team list HTML
+    let groupsHtml = '';
+    for (const [lid, group] of Object.entries(groups)) {
+        const allMembers = [
+            ...(group.leader ? [group.leader] : []),
+            ...group.members
+        ];
+
+        const cards = allMembers.map(emp => {
+            const active = getActiveEntryFor(emp.id);
+            const initials = (emp.name||'??').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+            const color = emp.color || '#1d4ed8';
+            const project = active ? state.projects.find(p => p.id === active.project_id) : null;
+
+            return `
+            <div class="foreman-emp-card glass-panel ${active ? 'timer-running' : ''}" onclick="selectForemanEmployee('${escapeHtml(emp.id)}')">
+                <div class="foreman-emp-left">
+                    <div class="emp-avatar" style="background:${escapeHtml(color)}">${escapeHtml(initials)}</div>
+                    <div class="foreman-emp-info">
+                        <div class="emp-name">${escapeHtml(emp.name)}</div>
+                        <div class="emp-no">${escapeHtml(emp.designation||'')}</div>
+                        ${active && project ? `<div class="foreman-active-proj">${escapeHtml(project.name)}</div>` : ''}
+                    </div>
+                </div>
+                <div class="foreman-emp-right">
+                    ${active
+                        ? `<div class="foreman-timer-badge running">
+                                <span class="foreman-elapsed" id="felapsed-${escapeHtml(emp.id)}">${formatElapsed(active.start_time)}</span>
+                                <button class="btn danger btn-sm" onclick="event.stopPropagation(); foremanStopTimer('${escapeHtml(active.id)}','${escapeHtml(emp.id)}')">STOP</button>
+                           </div>`
+                        : `<div class="foreman-timer-badge idle">
+                                <span class="muted" style="font-size:.75rem">Idle</span>
+                                <button class="btn primary btn-sm" onclick="event.stopPropagation(); selectForemanEmployee('${escapeHtml(emp.id)}')">START</button>
+                           </div>`
+                    }
+                </div>
+            </div>`;
+        }).join('');
+
+        const leaderName = group.leader ? escapeHtml(group.leader.name) : 'Other';
+        groupsHtml += `
+            <div class="foreman-group">
+                <div class="foreman-group-label">${leaderName}</div>
+                ${cards}
+            </div>`;
+    }
+
+    main.innerHTML = `
+        ${renderViewHeader('Team Timers')}
+        <div class="foreman-view">
+            ${groupsHtml}
+        </div>`;
+
+    // Start ticking all active timers
+    startForemanTicking(team);
+}
+
+function renderForemanTimerFor(main, emp) {
+    const activeEntry = getActiveEntryFor(emp.id);
+    const initials = (emp.name||'??').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const color = emp.color || '#1d4ed8';
+
+    const projectOptions = state.projects
+        .map(p => `<option value="${escapeHtml(p.id)}" data-npt="${p.proj_no === 'NPT' || p.name.toUpperCase().includes('NPT') ? 'true' : 'false'}">
+            ${p.proj_no ? '[' + escapeHtml(p.proj_no) + '] ' : ''}${escapeHtml(p.name)}
+        </option>`).join('');
+
+    main.innerHTML = `
+        ${renderViewHeader('Team Timers')}
+        <div class="timer-container">
+            <button class="btn outline" style="align-self:flex-start;margin-bottom:.5rem" onclick="selectForemanEmployee(null)">← Back to Team</button>
+
+            <div class="foreman-selected-emp glass-panel">
+                <div class="emp-avatar" style="background:${escapeHtml(color)};width:48px;height:48px;font-size:1rem">${escapeHtml(initials)}</div>
+                <div>
+                    <div class="emp-name" style="font-size:1rem">${escapeHtml(emp.name)}</div>
+                    <div class="muted">${escapeHtml(emp.designation||'')}</div>
+                </div>
+            </div>
+
+            <div class="timer-ring-card">
+                <svg class="timer-ring-svg" viewBox="0 0 200 200">
+                    <circle class="ring-bg" cx="100" cy="100" r="88" />
+                    <circle class="ring-progress" id="timerRingProgress" cx="100" cy="100" r="88"
+                        stroke-dasharray="553"
+                        stroke-dashoffset="${activeEntry ? getRingOffset(activeEntry) : 553}" />
+                </svg>
+                <div class="timer-face">
+                    <div class="timer-elapsed" id="timerElapsed">${activeEntry ? formatElapsed(activeEntry.start_time) : '00:00:00'}</div>
+                    <div class="timer-label">${activeEntry ? 'RUNNING' : 'READY'}</div>
+                </div>
+            </div>
+
+            ${activeEntry
+                ? `<div class="timer-active-info glass-panel">
+                    <div class="active-project-badge" style="background:rgba(29,78,216,.1);border-color:#1d4ed8">
+                        ${escapeHtml(state.projects.find(p => p.id === activeEntry.project_id)?.name || 'Unknown')}
+                    </div>
+                    <button class="btn-stop" onclick="foremanStopTimer('${escapeHtml(activeEntry.id)}','${escapeHtml(emp.id)}')">STOP &amp; SAVE</button>
+                   </div>`
+                : `<div class="timer-form glass-panel">
+                    <div class="form-group">
+                        <label>Project</label>
+                        <select id="timerProject" class="form-control" onchange="handleProjectChange(this)">
+                            <option value="">-- Select project --</option>
+                            ${projectOptions}
+                        </select>
+                    </div>
+                    <div class="form-group" id="nptReasonGroup" style="display:none">
+                        <label>Reason for NPT <span style="color:#f43f5e">*</span></label>
+                        <input type="text" id="timerNptReason" class="form-control" placeholder="Explain reason for non-productive time..." />
+                    </div>
+                    <button class="btn primary btn-start" onclick="foremanStartTimer('${escapeHtml(emp.id)}')">START TIMER</button>
+                   </div>`
+            }
+        </div>`;
+
+    if (activeEntry) startTickingDisplay(activeEntry);
+}
+
+function startForemanTicking(team) {
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+        team.forEach(emp => {
+            const active = getActiveEntryFor(emp.id);
+            const el = document.getElementById('felapsed-' + emp.id);
+            if (el && active) el.textContent = formatElapsed(active.start_time);
+        });
+    }, 1000);
+}
+
+// ── EMPLOYEE VIEW ─────────────────────────────────────────────────────────────
+function renderMyTimer() {
     const main = document.getElementById('mainContent');
     const activeEntry = getMyActiveEntry();
     main.innerHTML = `
@@ -20,9 +204,7 @@ export function renderTimerView() {
                         stroke-dashoffset="${activeEntry ? getRingOffset(activeEntry) : 553}" />
                 </svg>
                 <div class="timer-face">
-                    <div class="timer-elapsed" id="timerElapsed">
-                        ${activeEntry ? formatElapsed(activeEntry.start_time) : '00:00:00'}
-                    </div>
+                    <div class="timer-elapsed" id="timerElapsed">${activeEntry ? formatElapsed(activeEntry.start_time) : '00:00:00'}</div>
                     <div class="timer-label">${activeEntry ? 'RUNNING' : 'READY'}</div>
                 </div>
             </div>
@@ -35,9 +217,7 @@ function renderStartForm() {
     const projectOptions = state.projects
         .map(p => `<option value="${escapeHtml(p.id)}" data-npt="${p.proj_no === 'NPT' || p.name.toUpperCase().includes('NPT') ? 'true' : 'false'}">
             ${p.proj_no ? '[' + escapeHtml(p.proj_no) + '] ' : ''}${escapeHtml(p.name)}
-        </option>`)
-        .join('');
-
+        </option>`).join('');
     return `
         <div class="timer-form glass-panel">
             <div class="form-group">
@@ -67,12 +247,18 @@ function renderActiveControls(entry) {
         </div>`;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function getMyActiveEntry() {
     return state.timeEntries.find(e =>
-        e.employee_id === state.activeProfileId &&
-        e.start_time &&
-        (!e.end_time || e.end_time === '') &&
-        (!e.total_hours || e.total_hours === 0)
+        e.employee_id === state.activeProfileId && e.start_time &&
+        (!e.end_time || e.end_time === '') && (!e.total_hours || e.total_hours === 0)
+    ) || null;
+}
+
+function getActiveEntryFor(empId) {
+    return state.timeEntries.find(e =>
+        e.employee_id === empId && e.start_time &&
+        (!e.end_time || e.end_time === '') && (!e.total_hours || e.total_hours === 0)
     ) || null;
 }
 
@@ -99,48 +285,87 @@ function startTickingDisplay(entry) {
 
 export function stopTimerInterval() { clearInterval(timerInterval); }
 
-// Show/hide NPT reason field based on selected project
+// ── Global handlers ───────────────────────────────────────────────────────────
+
+window.selectForemanEmployee = function(empId) {
+    _selectedEmpId = empId;
+    renderTimerView();
+};
+
 window.handleProjectChange = function(select) {
-    const selected = select.options[select.selectedIndex];
-    const isNpt = selected?.dataset?.npt === 'true';
-    const reasonGroup = document.getElementById('nptReasonGroup');
-    if (reasonGroup) reasonGroup.style.display = isNpt ? 'block' : 'none';
-    if (!isNpt) {
-        const reasonInput = document.getElementById('timerNptReason');
-        if (reasonInput) reasonInput.value = '';
-    }
+    const isNpt = select?.options[select.selectedIndex]?.dataset?.npt === 'true';
+    const g = document.getElementById('nptReasonGroup');
+    if (g) g.style.display = isNpt ? 'block' : 'none';
+    if (!isNpt) { const r = document.getElementById('timerNptReason'); if (r) r.value = ''; }
+};
+
+window.foremanStartTimer = async function(empId) {
+    const projectId = document.getElementById('timerProject')?.value;
+    if (!projectId) { showNotification('Select a project first', 'warning'); return; }
+    const select = document.getElementById('timerProject');
+    const isNpt = select?.options[select.selectedIndex]?.dataset?.npt === 'true';
+    const nptReason = document.getElementById('timerNptReason')?.value?.trim();
+    if (isNpt && !nptReason) { showNotification('Please enter a reason for NPT', 'warning'); return; }
+
+    // Check no active timer already
+    const existing = getActiveEntryFor(empId);
+    if (existing) { showNotification('This employee already has an active timer', 'warning'); return; }
+
+    const emp = state.employees.find(e => e.id === empId);
+    try {
+        const entry = await apiRequest('/entries', { method: 'POST', body: JSON.stringify({
+            employee_id: empId,
+            project_id: projectId,
+            task: isNpt ? 'NPT - ' + nptReason : 'Work',
+            description: isNpt ? nptReason : '',
+            start_time: new Date().toISOString(),
+            end_time: '', total_hours: 0,
+            started_by: state.activeProfileId  // track who started it
+        })});
+        state.timeEntries.push(entry);
+        showNotification(`Timer started for ${emp?.name || 'employee'}`, 'success');
+        renderTimerView();
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
+};
+
+window.foremanStopTimer = async function(entryId, empId) {
+    const entry = state.timeEntries.find(e => e.id === entryId);
+    if (!entry) return;
+    const endTime = new Date().toISOString();
+    const totalHours = (Date.now() - new Date(entry.start_time).getTime()) / 3600000;
+    const emp = state.employees.find(e => e.id === empId);
+    try {
+        const updated = await apiRequest(`/entries/${entryId}`, { method: 'PUT',
+            body: JSON.stringify({ ...entry, end_time: endTime, total_hours: parseFloat(totalHours.toFixed(4)) })});
+        const idx = state.timeEntries.findIndex(e => e.id === entryId);
+        if (idx !== -1) state.timeEntries[idx] = updated;
+        clearInterval(timerInterval);
+        _selectedEmpId = null;
+        showNotification(`Logged ${totalHours.toFixed(2)}h for ${emp?.name || 'employee'}`, 'success');
+        renderTimerView();
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
 };
 
 window.startMyTimer = async function() {
     const projectId = document.getElementById('timerProject')?.value;
     if (!projectId) { showNotification('Select a project first', 'warning'); return; }
-
     const select = document.getElementById('timerProject');
     const isNpt = select?.options[select.selectedIndex]?.dataset?.npt === 'true';
     const nptReason = document.getElementById('timerNptReason')?.value?.trim();
-
-    if (isNpt && !nptReason) {
-        showNotification('Please enter a reason for NPT', 'warning');
-        document.getElementById('timerNptReason').focus();
-        return;
-    }
-
-    const description = isNpt ? nptReason : '';
-
+    if (isNpt && !nptReason) { showNotification('Please enter a reason for NPT', 'warning'); return; }
     try {
         const entry = await apiRequest('/entries', { method: 'POST', body: JSON.stringify({
             employee_id: state.activeProfileId,
             project_id: projectId,
             task: isNpt ? 'NPT - ' + nptReason : 'Work',
-            description,
+            description: isNpt ? nptReason : '',
             start_time: new Date().toISOString(),
-            end_time: '',
-            total_hours: 0
+            end_time: '', total_hours: 0
         })});
         state.timeEntries.push(entry);
         renderTimerView();
         showNotification('Timer started', 'success');
-    } catch(e) { showNotification('Failed to start: ' + e.message, 'error'); }
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
 };
 
 window.stopMyTimer = async function(entryId) {
@@ -156,7 +381,7 @@ window.stopMyTimer = async function(entryId) {
         clearInterval(timerInterval);
         renderTimerView();
         showNotification(`Logged ${totalHours.toFixed(2)}h`, 'success');
-    } catch(e) { showNotification('Failed to stop: ' + e.message, 'error'); }
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
 };
 
 window.stopUserTimer = window.stopMyTimer;
