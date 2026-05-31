@@ -516,3 +516,9 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 /* ── Project card improvements ───────────────────────────────── */
 .project-name { font-weight:600; font-size:.95rem; line-height:1.4; word-break:break-word; }
 .project-card { min-height:120px; }
+
+/* ── Project card custom fields ──────────────────────────────── */
+.project-custom-fields { margin-top:.5rem; padding-top:.5rem; border-top:1px solid rgba(255,255,255,0.07); display:flex; flex-direction:column; gap:.3rem; }
+.custom-field-row { display:flex; justify-content:space-between; align-items:center; font-size:.8rem; }
+.custom-field-label { color:#94a3b8; }
+.custom-field-value { font-weight:600; text-align:right; max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
