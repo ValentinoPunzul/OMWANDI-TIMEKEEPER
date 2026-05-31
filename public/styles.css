@@ -573,3 +573,14 @@ details summary::-webkit-details-marker { color:#94a3b8; }
     .mobile-more-item.danger { color:#f43f5e; }
     .mobile-more-divider { height:1px; background:rgba(255,255,255,0.08); margin:.5rem 0; }
 }
+
+/* ── Hide mobile nav + drawer on desktop ─────────────────────── */
+@media (min-width: 769px) {
+    .mobile-nav { display: none !important; }
+    .mobile-more-drawer { display: none !important; }
+}
+
+/* ── Show mobile nav only on mobile ──────────────────────────── */
+@media (max-width: 768px) {
+    .mobile-nav { display: grid; }
+}
