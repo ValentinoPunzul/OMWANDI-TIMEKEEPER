@@ -531,3 +531,10 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 .ref-item-name { font-size:.875rem; }
 .ref-item-actions { display:flex; gap:.15rem; flex-shrink:0; }
 .ref-add-row { display:flex; gap:.5rem; }
+
+/* ── Mobile nav 5 items ──────────────────────────────────────── */
+@media (max-width: 768px) {
+    .mobile-nav { grid-template-columns: repeat(5, 1fr); }
+    .mobile-nav-item span { font-size:.6rem; }
+    .mobile-nav-item svg { width:18px; height:18px; }
+}
