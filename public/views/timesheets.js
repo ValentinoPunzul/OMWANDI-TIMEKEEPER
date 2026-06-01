@@ -102,8 +102,8 @@ function buildTable() {
     if (!entries.length) return '<p class="empty-state">No entries match your filters.</p>';
 
     // Build sortable headers
-    const cols = ['date','start','end','employee','project','hours'];
-    const labels = ['Date','Start','End','Employee','Project','Hours'];
+    const cols = ['date','employee','start','end','project','hours'];
+    const labels = ['Date','Employee','Start','End','Project','Hours'];
     const headers = cols.map((col, i) => {
         const active = _tsSortCol === col;
         const canSort = col !== 'description';
@@ -119,9 +119,9 @@ function buildTable() {
         const canEdit = isAdmin || e.employee_id===state.activeProfileId;
         return `<tr>
             <td>${date}</td>
+            <td>${escapeHtml(emp?.name||'Unknown')}</td>
             <td style="white-space:nowrap">${timeFmt(e.start_time)}</td>
             <td style="white-space:nowrap">${timeFmt(e.end_time)}</td>
-            <td>${escapeHtml(emp?.name||'Unknown')}</td>
             <td><span class="proj-tag" style="border-color:${escapeHtml(proj?.color||'#1d4ed8')}">${proj?.proj_no?'['+escapeHtml(proj.proj_no)+'] ':''}${escapeHtml(proj?.name||'Unknown')}</span></td>
             <td class="hours-cell">${(e.total_hours||0).toFixed(2)}h</td>
             <td>${canEdit?`<button class="btn-icon" onclick="openEditEntryModal('${escapeHtml(e.id)}')">✏️</button>
@@ -147,7 +147,7 @@ window.exportTimesheets = function() {
     const entries = getFiltered().sort((a,b)=>new Date(b.start_time)-new Date(a.start_time));
     if (!entries.length) { showNotification('No entries to export', 'warning'); return; }
 
-    const headers = ['Date','Start Time','End Time','Employee','Project No','Project','Hours'];
+    const headers = ['Date','Employee','Start Time','End Time','Project No','Project','Hours'];
     const csvEscape = v => {
         const s = String(v ?? '');
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
@@ -160,9 +160,9 @@ window.exportTimesheets = function() {
         const tf = iso => iso ? new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
         return [
             date,
+            emp?.name || 'Unknown',
             tf(e.start_time),
             tf(e.end_time),
-            emp?.name || 'Unknown',
             proj?.proj_no || '',
             proj?.name || 'Unknown',
             (e.total_hours||0).toFixed(2)
