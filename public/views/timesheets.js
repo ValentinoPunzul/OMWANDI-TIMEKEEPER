@@ -101,8 +101,8 @@ function buildTable() {
     if (!entries.length) return '<p class="empty-state">No entries match your filters.</p>';
 
     // Build sortable headers
-    const cols = ['date','employee','proj_no','project','description','hours'];
-    const labels = ['Date','Employee','Project No','Project','Description','Hours'];
+    const cols = ['date','employee','project','description','hours'];
+    const labels = ['Date','Employee','Project','Description','Hours'];
     const headers = cols.map((col, i) => {
         const active = _tsSortCol === col;
         const canSort = col !== 'description';
@@ -118,8 +118,7 @@ function buildTable() {
         return `<tr>
             <td>${date}</td>
             <td>${escapeHtml(emp?.name||'Unknown')}</td>
-            <td style="white-space:nowrap;font-weight:600">${escapeHtml(proj?.proj_no||'')}</td>
-            <td><span class="proj-tag" style="border-color:${escapeHtml(proj?.color||'#1d4ed8')}">${escapeHtml(proj?.name||'Unknown')}</span></td>
+            <td><span class="proj-tag" style="border-color:${escapeHtml(proj?.color||'#1d4ed8')}">${proj?.proj_no?'['+escapeHtml(proj.proj_no)+'] ':''}${escapeHtml(proj?.name||'Unknown')}</span></td>
             <td>${escapeHtml(e.description||'')}</td>
             <td class="hours-cell">${(e.total_hours||0).toFixed(2)}h</td>
             <td>${canEdit?`<button class="btn-icon" onclick="openEditEntryModal('${escapeHtml(e.id)}')">✏️</button>
@@ -131,7 +130,7 @@ function buildTable() {
     return `<table class="timesheet-table">
         <thead><tr>${headers}<th></th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="5" class="total-label">Total</td><td class="hours-cell">${total.toFixed(2)}h</td><td></td></tr></tfoot>
+        <tfoot><tr><td colspan="4" class="total-label">Total</td><td class="hours-cell">${total.toFixed(2)}h</td><td></td></tr></tfoot>
     </table>`;
 }
 
