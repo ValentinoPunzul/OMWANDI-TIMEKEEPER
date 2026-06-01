@@ -4,6 +4,10 @@ import { apiRequest } from '../api.js';
 import { escapeHtml } from '../utils.js';
 import { renderViewHeader } from './header.js';
 
+// Sort state
+let _tsSortCol = 'date';
+let _tsSortDir = 'desc';
+
 export function renderTimesheets() {
     const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
@@ -69,8 +73,41 @@ function getFiltered() {
 
 function buildTable() {
     const isAdmin = state.userRole==='Administrator';
-    const entries = getFiltered().sort((a,b)=>new Date(b.start_time)-new Date(a.start_time));
+    const entries = getFiltered();
+
+    // Sort
+    entries.sort((a, b) => {
+        let cmp = 0;
+        if (_tsSortCol === 'date') {
+            cmp = new Date(a.start_time||0) - new Date(b.start_time||0);
+        } else if (_tsSortCol === 'employee') {
+            const na = state.employees.find(x=>x.id===a.employee_id)?.name||'';
+            const nb = state.employees.find(x=>x.id===b.employee_id)?.name||'';
+            cmp = na.localeCompare(nb);
+        } else if (_tsSortCol === 'project') {
+            const pa = state.projects.find(x=>x.id===a.project_id)?.name||'';
+            const pb = state.projects.find(x=>x.id===b.project_id)?.name||'';
+            cmp = pa.localeCompare(pb);
+        } else if (_tsSortCol === 'task') {
+            cmp = (a.task||'').localeCompare(b.task||'');
+        } else if (_tsSortCol === 'hours') {
+            cmp = (a.total_hours||0) - (b.total_hours||0);
+        }
+        return _tsSortDir === 'asc' ? cmp : -cmp;
+    });
+
     if (!entries.length) return '<p class="empty-state">No entries match your filters.</p>';
+
+    // Build sortable headers
+    const cols = ['date','employee','project','task','description','hours'];
+    const labels = ['Date','Employee','Project','Task','Description','Hours'];
+    const headers = cols.map((col, i) => {
+        const active = _tsSortCol === col;
+        const canSort = col !== 'description';
+        const arrow = active ? (_tsSortDir === 'asc' ? ' ↑' : ' ↓') : '';
+        return `<th class="${active ? 'sort-active' : ''}" ${canSort ? `style="cursor:pointer;user-select:none" onclick="sortTimesheetsBy('${col}')"` : ''}>${labels[i]}${arrow}</th>`;
+    }).join('');
+
     const rows = entries.map(e => {
         const emp  = state.employees.find(x=>x.id===e.employee_id);
         const proj = state.projects.find(x=>x.id===e.project_id);
@@ -87,13 +124,20 @@ function buildTable() {
                 <button class="btn-icon danger" onclick="deleteEntry('${escapeHtml(e.id)}')">🗑️</button>`:''}</td>
         </tr>`;
     }).join('');
+
     const total = entries.reduce((s,e)=>s+(e.total_hours||0),0);
     return `<table class="timesheet-table">
-        <thead><tr><th>Date</th><th>Employee</th><th>Project</th><th>Task</th><th>Description</th><th>Hours</th><th></th></tr></thead>
+        <thead><tr>${headers}<th></th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td colspan="5" class="total-label">Total</td><td class="hours-cell">${total.toFixed(2)}h</td><td></td></tr></tfoot>
     </table>`;
 }
+
+window.sortTimesheetsBy = function(col) {
+    if (_tsSortCol === col) { _tsSortDir = _tsSortDir === 'asc' ? 'desc' : 'asc'; }
+    else { _tsSortCol = col; _tsSortDir = col === 'date' ? 'desc' : 'asc'; }
+    document.getElementById('timesheetContent').innerHTML = buildTable();
+};
 
 window.applyTimesheetFilters = () => document.getElementById('timesheetContent').innerHTML = buildTable();
 window.clearTimesheetFilters = function() {
