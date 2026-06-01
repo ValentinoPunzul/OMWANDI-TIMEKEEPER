@@ -148,9 +148,7 @@ export async function renderProjects() {
             <button class="btn outline proj-view-toggle" onclick="toggleProjectView()" title="Toggle view">
                 ${_projViewMode === 'grid' ? '☰ List' : '⊞ Grid'}
             </button>
-            <button class="btn outline proj-view-toggle" onclick="toggleProjectView()" title="Toggle view">
-                ${_projViewMode === 'grid' ? '☰ List' : '⊞ Grid'}
-            </button>
+
             ${isAdmin ? `<button class="btn primary" onclick="openProjEditModal()">+ New Project</button>` : ''}
             ${(_projSearch||_projFilterClient||_projFilterVessel||_projFilterForeman||_projFilterStatus) ? `<button class="btn outline" onclick="clearProjectFilters()">✕ Clear</button>` : ''}
         </div>
@@ -278,10 +276,7 @@ function buildProjectListView(projects, isAdmin, customFields) {
     </div>`;
 }
 
-window.toggleProjectView = function() {
-    _projViewMode = _projViewMode === 'grid' ? 'list' : 'grid';
-    renderProjects();
-};
+
 
 window.sortProjBy = function(col) {
     if (_projSortCol === col) { _projSortDir = _projSortDir === 'asc' ? 'desc' : 'asc'; }
