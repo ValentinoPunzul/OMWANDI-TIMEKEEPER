@@ -136,7 +136,7 @@ export async function renderProjects() {
                 <option value="">All Foremen</option>${foremanOptions}
             </select>
             <select class="form-control" id="projFilterStatus" onchange="applyProjectFilters()" style="flex:1;min-width:120px">
-                <option value="">All Statuses</option>${statusOptions}
+                <option value="">All Statuses</option>
             </select>
             <select class="form-control" id="projSortCol" onchange="applyProjectFilters()" style="min-width:130px">
                 ${sortOptions}
@@ -179,12 +179,31 @@ export async function renderProjects() {
         </div>`;
 }
 
+// Called after renderProjects sets main.innerHTML
+function _postRenderProjects() { populateStatusFilter(); }
+
 window.toggleOpenProject = function(cb) {
     const bg = document.getElementById('projBudgetGroup');
     if (bg) bg.style.display = cb.checked ? 'none' : 'block';
 };
 
+function populateStatusFilter() {
+    const sel = document.getElementById('projFilterStatus');
+    if (!sel) return;
+    const statuses = [...new Set(state.projects.map(p => p.status_name || p.status).filter(Boolean))].sort();
+    // Remove old options except first
+    while (sel.options.length > 1) sel.remove(1);
+    statuses.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        if (s === _projFilterStatus) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
 window.applyProjectFilters = function() {
+    populateStatusFilter();
     _projSearch       = document.getElementById('projSearch')?.value || '';
     _projFilterClient = document.getElementById('projFilterClient')?.value || '';
     _projFilterVessel  = document.getElementById('projFilterVessel')?.value  || '';
