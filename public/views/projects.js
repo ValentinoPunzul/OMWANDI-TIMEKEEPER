@@ -137,27 +137,27 @@ export async function renderProjects() {
             <button class="btn outline proj-sort-dir" id="projSortDirBtn" onclick="toggleProjectSortDir()" title="Toggle sort direction">
                 ${_projSortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
             </button>
-            ${isAdmin ? `<button class="btn primary" onclick="openProjectModal()">+ New Project</button>` : ''}
+            ${isAdmin ? `<button class="btn primary" onclick="openProjEditModal()">+ New Project</button>` : ''}
             ${(_projSearch||_projFilterClient||_projFilterVessel||_projFilterForeman||_projFilterStatus) ? `<button class="btn outline" onclick="clearProjectFilters()">✕ Clear</button>` : ''}
         </div>
         <div class="project-grid" id="projectGrid">${cards || '<p class="empty-state">No projects match your filters.</p>'}</div>
-        <div id="projectModal" class="modal-overlay" style="display:none">
+        <div id="projEditModal" class="modal-overlay" style="display:none">
             <div class="modal glass-panel">
-                <h3 id="projectModalTitle">New Project</h3>
-                <input type="hidden" id="projectModalId" />
-                <div class="form-group"><label>Project Name *</label><input type="text" id="projectModalName" class="form-control" /></div>
-                <div class="form-group"><label>Project Number</label><input type="text" id="projectModalNumber" class="form-control" /></div>
-                <div class="form-group"><label>Client</label><input type="text" id="projectModalClient" class="form-control" /></div>
-                <div class="form-group"><label>Budget Hours</label><input type="number" id="projectModalBudget" class="form-control" min="0" step="0.5" /></div>
+                <h3 id="projEditTitle">New Project</h3>
+                <input type="hidden" id="projEditId" />
+                <div class="form-group"><label>Project Name *</label><input type="text" id="projEditName" class="form-control" /></div>
+                <div class="form-group"><label>Project Number</label><input type="text" id="projEditNumber" class="form-control" /></div>
+                <div class="form-group"><label>Client</label><input type="text" id="projEditClient" class="form-control" /></div>
+                <div class="form-group"><label>Budget Hours</label><input type="number" id="projEditBudget" class="form-control" min="0" step="0.5" /></div>
                 <div class="form-group"><label>Colour</label>
-                    <div class="color-picker" id="projectModalColor">
+                    <div class="color-picker" id="projEditColor">
                         ${['#1d4ed8','#7c3aed','#db2777','#e11d48','#ea580c','#ca8a04','#16a34a','#0891b2'].map(c =>
                             `<label class="color-swatch" style="background:${c}"><input type="radio" name="projColor" value="${c}" ${c==='#1d4ed8'?'checked':''} /></label>`).join('')}
                     </div>
                 </div>
                 <div class="modal-actions">
-                    <button class="btn outline" onclick="closeProjectModal()">Cancel</button>
-                    <button class="btn primary" onclick="saveProject()">Save</button>
+                    <button class="btn outline" onclick="closeProjEditModal()">Cancel</button>
+                    <button class="btn primary" onclick="saveProjEdit()">Save</button>
                 </div>
             </div>
         </div>`;
@@ -183,35 +183,35 @@ window.clearProjectFilters = function() {
     renderProjects();
 };
 
-window.openProjectModal = function(id=null) {
-    document.getElementById('projectModalTitle').textContent = id ? 'Edit Project' : 'New Project';
-    document.getElementById('projectModalId').value = id || '';
+window.openProjEditModal = function(id=null) {
+    document.getElementById('projEditTitle').textContent = id ? 'Edit Project' : 'New Project';
+    document.getElementById('projEditId').value = id || '';
     if (id) {
         const p = state.projects.find(x => x.id === id);
         if (p) {
-            document.getElementById('projectModalName').value = p.name || '';
-            document.getElementById('projectModalNumber').value = p.proj_no || '';
-            document.getElementById('projectModalClient').value = p.client || '';
-            document.getElementById('projectModalBudget').value = p.budget_hours || '';
+            document.getElementById('projEditName').value = p.name || '';
+            document.getElementById('projEditNumber').value = p.proj_no || '';
+            document.getElementById('projEditClient').value = p.client || '';
+            document.getElementById('projEditBudget').value = p.budget_hours || '';
             const r = document.querySelector(`input[name="projColor"][value="${p.color}"]`);
             if (r) r.checked = true;
         }
     } else {
         ['projectModalName','projectModalNumber','projectModalClient','projectModalBudget'].forEach(i => document.getElementById(i).value = '');
     }
-    document.getElementById('projectModal').style.display = 'flex';
+    document.getElementById('projEditModal').style.display = 'flex';
 };
-window.closeProjectModal = () => document.getElementById('projectModal').style.display = 'none';
-window.editProject = id => window.openProjectModal(id);
+window.closeProjEditModal = () => document.getElementById('projEditModal').style.display = 'none';
+window.editProject = id => window.openProjEditModal(id);
 
-window.saveProject = async function() {
-    const id = document.getElementById('projectModalId').value;
-    const name = document.getElementById('projectModalName').value.trim();
+window.saveProjEdit = async function() {
+    const id = document.getElementById('projEditId').value;
+    const name = document.getElementById('projEditName').value.trim();
     if (!name) { showNotification('Project name is required', 'warning'); return; }
     const payload = { name,
-        proj_no: document.getElementById('projectModalNumber').value.trim(),
-        client: document.getElementById('projectModalClient').value.trim(),
-        budget_hours: parseFloat(document.getElementById('projectModalBudget').value) || 0,
+        proj_no: document.getElementById('projEditNumber').value.trim(),
+        client: document.getElementById('projEditClient').value.trim(),
+        budget_hours: parseFloat(document.getElementById('projEditBudget').value) || 0,
         color: document.querySelector('input[name="projColor"]:checked')?.value || '#1d4ed8' };
     try {
         if (id) {
@@ -222,7 +222,7 @@ window.saveProject = async function() {
             const created = await apiRequest('/projects', {method:'POST', body:JSON.stringify(payload)});
             state.projects.push(created);
         }
-        window.closeProjectModal(); renderProjects(); showNotification('Project saved', 'success');
+        window.closeProjEditModal(); renderProjects(); showNotification('Project saved', 'success');
     } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
 };
 
