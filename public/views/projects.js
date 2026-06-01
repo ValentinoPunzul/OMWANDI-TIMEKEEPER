@@ -106,11 +106,18 @@ export async function renderProjects() {
                     <button class="btn-icon danger" onclick="deleteProject('${escapeHtml(p.id)}')">🗑️</button>
                 </div>` : ''}
             </div>
-            <div class="budget-row">
-                <span class="budget-label">Budget</span>
-                <span class="budget-value ${statusClass}">${burned.toFixed(1)}h / ${budget > 0 ? budget + 'h' : '—'}</span>
-            </div>
-            ${budget > 0 ? `<div class="progress-bar-bg"><div class="progress-bar-fill ${statusClass}" style="width:${pct.toFixed(1)}%"></div></div>` : ''}
+            ${p.open_project
+                ? `<div class="budget-row">
+                    <span class="budget-label">Budget</span>
+                    <span class="open-project-badge">Open Project</span>
+                    <span class="budget-value ok" style="margin-left:auto">${burned.toFixed(1)}h logged</span>
+                   </div>`
+                : `<div class="budget-row">
+                    <span class="budget-label">Budget</span>
+                    <span class="budget-value ${statusClass}">${burned.toFixed(1)}h / ${budget > 0 ? budget + 'h' : '—'}</span>
+                   </div>
+                   ${budget > 0 ? `<div class="progress-bar-bg"><div class="progress-bar-fill ${statusClass}" style="width:${pct.toFixed(1)}%"></div></div>` : ''}`
+            }
             ${extraRows.length ? `<div class="project-custom-fields">${extraRows.join('')}</div>` : ''}
         </div>`;
     }).join('');
@@ -148,7 +155,16 @@ export async function renderProjects() {
                 <div class="form-group"><label>Project Name *</label><input type="text" id="projEditName" class="form-control" /></div>
                 <div class="form-group"><label>Project Number</label><input type="text" id="projEditNumber" class="form-control" /></div>
                 <div class="form-group"><label>Client</label><input type="text" id="projEditClient" class="form-control" /></div>
-                <div class="form-group"><label>Budget Hours</label><input type="number" id="projEditBudget" class="form-control" min="0" step="0.5" /></div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="projEditOpenProject" onchange="toggleOpenProject(this)" />
+                        <span>Open Project (no budget limit)</span>
+                    </label>
+                </div>
+                <div class="form-group" id="projBudgetGroup">
+                    <label>Budget Hours</label>
+                    <input type="number" id="projEditBudget" class="form-control" min="0" step="0.5" />
+                </div>
                 <div class="form-group"><label>Colour</label>
                     <div class="color-picker" id="projEditColor">
                         ${['#1d4ed8','#7c3aed','#db2777','#e11d48','#ea580c','#ca8a04','#16a34a','#0891b2'].map(c =>
@@ -162,6 +178,11 @@ export async function renderProjects() {
             </div>
         </div>`;
 }
+
+window.toggleOpenProject = function(cb) {
+    const bg = document.getElementById('projBudgetGroup');
+    if (bg) bg.style.display = cb.checked ? 'none' : 'block';
+};
 
 window.applyProjectFilters = function() {
     _projSearch       = document.getElementById('projSearch')?.value || '';
@@ -193,6 +214,10 @@ window.openProjEditModal = function(id=null) {
             document.getElementById('projEditNumber').value = p.proj_no || '';
             document.getElementById('projEditClient').value = p.client || '';
             document.getElementById('projEditBudget').value = p.budget_hours || '';
+            const isOpen = p.open_project === true || p.open_project === 1;
+            document.getElementById('projEditOpenProject').checked = isOpen;
+            const bg = document.getElementById('projBudgetGroup');
+            if (bg) bg.style.display = isOpen ? 'none' : 'block';
             const r = document.querySelector(`input[name="projColor"][value="${p.color}"]`);
             if (r) r.checked = true;
         }
@@ -200,6 +225,8 @@ window.openProjEditModal = function(id=null) {
         ['projEditName','projEditNumber','projEditClient','projEditBudget'].forEach(i => {
             const el = document.getElementById(i); if (el) el.value = '';
         });
+        const cb = document.getElementById('projEditOpenProject'); if (cb) cb.checked = false;
+        const bg = document.getElementById('projBudgetGroup'); if (bg) bg.style.display = 'block';
     }
     document.getElementById('projEditModal').style.display = 'flex';
 };
@@ -210,10 +237,12 @@ window.saveProjEdit = async function() {
     const id = document.getElementById('projEditId').value;
     const name = document.getElementById('projEditName').value.trim();
     if (!name) { showNotification('Project name is required', 'warning'); return; }
+    const isOpen = document.getElementById('projEditOpenProject')?.checked || false;
     const payload = { name,
         proj_no: document.getElementById('projEditNumber').value.trim(),
         client: document.getElementById('projEditClient').value.trim(),
-        budget_hours: parseFloat(document.getElementById('projEditBudget').value) || 0,
+        budget_hours: isOpen ? 0 : (parseFloat(document.getElementById('projEditBudget').value) || 0),
+        open_project: isOpen,
         color: document.querySelector('input[name="projColor"]:checked')?.value || '#1d4ed8' };
     try {
         if (id) {

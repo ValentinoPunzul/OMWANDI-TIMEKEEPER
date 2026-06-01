@@ -390,7 +390,9 @@ webhookRouter.post('/scoro', async (req, res) => {
           if (path) {
             const val = getVal(payload, path);
             if (val !== undefined && val !== null) {
-              projectData[appKey] = appKey === 'budget_hours' ? parseFloat(val) || 0 : String(val);
+              if (appKey === 'budget_hours') projectData[appKey] = parseFloat(val) || 0;
+              else if (appKey === 'open_project') projectData[appKey] = val == 1 || val === true || val === 'true';
+              else projectData[appKey] = String(val);
             }
           }
         });
