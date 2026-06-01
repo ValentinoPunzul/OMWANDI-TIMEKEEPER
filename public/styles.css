@@ -606,3 +606,7 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 .btn-sm { padding:.3rem .7rem; font-size:.78rem; border-radius:6px; }
 
 .status-onhold { background:rgba(245,158,11,0.15); color:#fbbf24; border:1px solid rgba(245,158,11,0.3); }
+
+/* ── Projects filter bar ─────────────────────────────────────── */
+.projects-filter-bar { display:flex; flex-wrap:wrap; gap:.65rem; align-items:center; margin-bottom:1rem; padding:.85rem 1rem; }
+.proj-sort-dir { min-width:70px; font-variant-numeric:tabular-nums; }
