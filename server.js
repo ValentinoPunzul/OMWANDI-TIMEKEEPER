@@ -85,7 +85,7 @@ const employeeSchema = z.object({
 
 const projectSchema = z.object({
     name: z.string().min(1, 'Project name is required'),
-    proj_no: z.string().min(1, 'Project number is required'),
+    proj_no: z.string().optional(),
     client: z.string().optional(),
     vessel_name: z.string().optional(),
     budget_hours: z.number().positive().optional(),

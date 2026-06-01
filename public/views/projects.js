@@ -197,7 +197,9 @@ window.openProjEditModal = function(id=null) {
             if (r) r.checked = true;
         }
     } else {
-        ['projectModalName','projectModalNumber','projectModalClient','projectModalBudget'].forEach(i => document.getElementById(i).value = '');
+        ['projEditName','projEditNumber','projEditClient','projEditBudget'].forEach(i => {
+            const el = document.getElementById(i); if (el) el.value = '';
+        });
     }
     document.getElementById('projEditModal').style.display = 'flex';
 };
@@ -222,7 +224,7 @@ window.saveProjEdit = async function() {
             const created = await apiRequest('/projects', {method:'POST', body:JSON.stringify(payload)});
             state.projects.push(created);
         }
-        window.closeProjEditModal(); renderProjects(); showNotification('Project saved', 'success');
+        window.closeProjEditModal(); await renderProjects(); showNotification('Project saved', 'success');
     } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
 };
 

@@ -10,7 +10,7 @@ import { renderSettings } from './views/settings.js';
 import { startDashboardClock } from './timer.js';
 
 window.showNotification = function(message, type='info') {
-    const c = document.getElementById('notificationContainer'); if (!c) return;
+    const c = document.getElementById('notification-container'); if (!c) return;
     const el = document.createElement('div'); el.className=`notification ${type}`; el.textContent=message;
     c.appendChild(el); setTimeout(()=>el.remove(), 3500);
 };
