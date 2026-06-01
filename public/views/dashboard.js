@@ -26,7 +26,7 @@ export function renderDashboard(container) {
                 const timeStr = `${Math.floor(diff/3600).toString().padStart(2,'0')}:${Math.floor((diff%3600)/60).toString().padStart(2,'0')}:${(diff%60).toString().padStart(2,'0')}`;
                 return `<div class="timer-card glass-panel">
                     <div class="timer-avatar" style="background:${escapeHtml(emp.color)}">${escapeHtml(emp.avatar)}</div>
-                    <div class="timer-user-info"><div>${escapeHtml(emp.name)}</div><div style="font-size:0.8rem; opacity:0.7;">${escapeHtml(emp.designation || '')}</div></div>
+                    <div class="timer-user-info"><div>${escapeHtml(emp.name)}</div><div style="font-size:0.8rem; opacity:0.7;">${escapeHtml(emp.designation || '')}</div>${(() => { const sb = state.employees.find(x=>x.id===t.started_by); return (sb && t.started_by!==t.employee_id) ? `<div style="font-size:0.7rem;opacity:0.6;color:#818cf8">▶ Started by ${escapeHtml(sb.name)}</div>` : ''; })()}</div>
                     <div class="timer-counter" style="margin-right:15px; font-family:monospace;">${timeStr}</div>
                     <button class="btn-text" style="color:#ef4444; font-weight:800;" onclick="stopUserTimer('${t.id}')">STOP</button>
                 </div>`;

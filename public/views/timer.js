@@ -390,7 +390,8 @@ window.startMyTimer = async function() {
             task: isNpt ? 'NPT - ' + nptReason : 'Work',
             description: isNpt ? nptReason : '',
             start_time: new Date().toISOString(),
-            end_time: '', total_hours: 0
+            end_time: '', total_hours: 0,
+            started_by: state.activeProfileId
         })});
         state.timeEntries.push(entry);
         renderTimerView();

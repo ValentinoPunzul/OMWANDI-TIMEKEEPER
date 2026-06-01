@@ -102,8 +102,8 @@ function buildTable() {
     if (!entries.length) return '<p class="empty-state">No entries match your filters.</p>';
 
     // Build sortable headers
-    const cols = ['date','employee','start','end','project','hours'];
-    const labels = ['Date','Employee','Start','End','Project','Hours'];
+    const cols = ['date','employee','startedby','start','end','project','hours'];
+    const labels = ['Date','Employee','Started By','Start','End','Project','Hours'];
     const headers = cols.map((col, i) => {
         const active = _tsSortCol === col;
         const canSort = col !== 'description';
@@ -120,6 +120,7 @@ function buildTable() {
         return `<tr>
             <td>${date}</td>
             <td>${escapeHtml(emp?.name||'Unknown')}</td>
+            <td>${(() => { const sb = state.employees.find(x=>x.id===e.started_by); return (sb && e.started_by!==e.employee_id) ? escapeHtml(sb.name) : '—'; })()}</td>
             <td style="white-space:nowrap">${timeFmt(e.start_time)}</td>
             <td style="white-space:nowrap">${timeFmt(e.end_time)}</td>
             <td><span class="proj-tag" style="border-color:${escapeHtml(proj?.color||'#1d4ed8')}">${proj?.proj_no?'['+escapeHtml(proj.proj_no)+'] ':''}${escapeHtml(proj?.name||'Unknown')}</span></td>
@@ -133,7 +134,7 @@ function buildTable() {
     return `<table class="timesheet-table">
         <thead><tr>${headers}<th></th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="5" class="total-label">Total</td><td class="hours-cell">${total.toFixed(2)}h</td><td></td></tr></tfoot>
+        <tfoot><tr><td colspan="6" class="total-label">Total</td><td class="hours-cell">${total.toFixed(2)}h</td><td></td></tr></tfoot>
     </table>`;
 }
 
@@ -147,7 +148,7 @@ window.exportTimesheets = function() {
     const entries = getFiltered().sort((a,b)=>new Date(b.start_time)-new Date(a.start_time));
     if (!entries.length) { showNotification('No entries to export', 'warning'); return; }
 
-    const headers = ['Date','Employee','Start Time','End Time','Project No','Project','Hours'];
+    const headers = ['Date','Employee','Started By','Start Time','End Time','Project No','Project','Hours'];
     const csvEscape = v => {
         const s = String(v ?? '');
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
@@ -161,6 +162,7 @@ window.exportTimesheets = function() {
         return [
             date,
             emp?.name || 'Unknown',
+            (state.employees.find(x=>x.id===e.started_by && e.started_by!==e.employee_id)?.name) || '',
             tf(e.start_time),
             tf(e.end_time),
             proj?.proj_no || '',
@@ -170,7 +172,7 @@ window.exportTimesheets = function() {
     });
 
     const total = entries.reduce((s,e)=>s+(e.total_hours||0),0);
-    rows.push(['','','','','','Total', total.toFixed(2)].map(csvEscape).join(','));
+    rows.push(['','','','','','','Total', total.toFixed(2)].map(csvEscape).join(','));
 
     // BOM for Excel UTF-8 compatibility
     const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
