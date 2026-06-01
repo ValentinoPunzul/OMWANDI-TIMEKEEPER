@@ -225,6 +225,11 @@ function renderStartForm() {
     return `
         <div class="timer-form glass-panel">
             <div class="form-group">
+                <label>Project Number <span class="optional">(quick find)</span></label>
+                <input type="text" id="timerProjectNo" class="form-control" placeholder="Type project number..." oninput="findProjectByNumber(this)" autocomplete="off" />
+                <div class="proj-find-hint muted" id="timerProjectHint"></div>
+            </div>
+            <div class="form-group">
                 <label>Project</label>
                 <select id="timerProject" class="form-control" onchange="handleProjectChange(this)">
                     <option value="">-- Select project --</option>
@@ -294,6 +299,26 @@ export function stopTimerInterval() { clearInterval(timerInterval); }
 window.selectForemanEmployee = function(empId) {
     _selectedEmpId = empId;
     renderTimerView();
+};
+
+window.findProjectByNumber = function(input) {
+    const val = input.value.trim();
+    const sel = document.getElementById('timerProject');
+    const hint = document.getElementById('timerProjectHint');
+    if (!sel) return;
+    if (!val) { if (hint) hint.textContent = ''; return; }
+    // Exact match first, then startsWith
+    let match = state.projects.find(p => (p.proj_no||'') === val)
+             || state.projects.find(p => (p.proj_no||'').startsWith(val));
+    if (match) {
+        sel.value = match.id;
+        handleProjectChange(sel);
+        if (hint) { hint.textContent = '✓ ' + match.name; hint.style.color = '#10b981'; }
+    } else {
+        sel.value = '';
+        handleProjectChange(sel);
+        if (hint) { hint.textContent = 'No project found'; hint.style.color = '#f43f5e'; }
+    }
 };
 
 window.handleProjectChange = function(select) {

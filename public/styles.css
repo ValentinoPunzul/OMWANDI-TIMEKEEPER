@@ -621,3 +621,6 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 
 /* ── Projects list view ──────────────────────────────────────── */
 .proj-view-toggle { min-width:70px; }
+
+/* ── Timer project quick-find ────────────────────────────────── */
+.proj-find-hint { font-size:.78rem; margin-top:.35rem; min-height:1em; }
