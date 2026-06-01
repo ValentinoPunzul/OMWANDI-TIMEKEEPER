@@ -102,8 +102,8 @@ function buildTable() {
     if (!entries.length) return '<p class="empty-state">No entries match your filters.</p>';
 
     // Build sortable headers
-    const cols = ['date','employee','project','description','hours'];
-    const labels = ['Date','Employee','Project','Description','Hours'];
+    const cols = ['date','start','end','employee','project','description','hours'];
+    const labels = ['Date','Start','End','Employee','Project','Description','Hours'];
     const headers = cols.map((col, i) => {
         const active = _tsSortCol === col;
         const canSort = col !== 'description';
@@ -115,9 +115,12 @@ function buildTable() {
         const emp  = state.employees.find(x=>x.id===e.employee_id);
         const proj = state.projects.find(x=>x.id===e.project_id);
         const date = e.start_time ? new Date(e.start_time).toLocaleDateString() : '—';
+        const timeFmt = iso => iso ? new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
         const canEdit = isAdmin || e.employee_id===state.activeProfileId;
         return `<tr>
             <td>${date}</td>
+            <td style="white-space:nowrap">${timeFmt(e.start_time)}</td>
+            <td style="white-space:nowrap">${timeFmt(e.end_time)}</td>
             <td>${escapeHtml(emp?.name||'Unknown')}</td>
             <td><span class="proj-tag" style="border-color:${escapeHtml(proj?.color||'#1d4ed8')}">${proj?.proj_no?'['+escapeHtml(proj.proj_no)+'] ':''}${escapeHtml(proj?.name||'Unknown')}</span></td>
             <td>${escapeHtml(e.description||'')}</td>
@@ -131,7 +134,7 @@ function buildTable() {
     return `<table class="timesheet-table">
         <thead><tr>${headers}<th></th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="4" class="total-label">Total</td><td class="hours-cell">${total.toFixed(2)}h</td><td></td></tr></tfoot>
+        <tfoot><tr><td colspan="6" class="total-label">Total</td><td class="hours-cell">${total.toFixed(2)}h</td><td></td></tr></tfoot>
     </table>`;
 }
 
@@ -145,7 +148,7 @@ window.exportTimesheets = function() {
     const entries = getFiltered().sort((a,b)=>new Date(b.start_time)-new Date(a.start_time));
     if (!entries.length) { showNotification('No entries to export', 'warning'); return; }
 
-    const headers = ['Date','Employee','Project No','Project','Description','Hours'];
+    const headers = ['Date','Start Time','End Time','Employee','Project No','Project','Description','Hours'];
     const csvEscape = v => {
         const s = String(v ?? '');
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
@@ -155,8 +158,11 @@ window.exportTimesheets = function() {
         const emp  = state.employees.find(x=>x.id===e.employee_id);
         const proj = state.projects.find(x=>x.id===e.project_id);
         const date = e.start_time ? new Date(e.start_time).toLocaleDateString() : '';
+        const tf = iso => iso ? new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
         return [
             date,
+            tf(e.start_time),
+            tf(e.end_time),
             emp?.name || 'Unknown',
             proj?.proj_no || '',
             proj?.name || 'Unknown',
@@ -166,7 +172,7 @@ window.exportTimesheets = function() {
     });
 
     const total = entries.reduce((s,e)=>s+(e.total_hours||0),0);
-    rows.push(['','','','','Total', total.toFixed(2)].map(csvEscape).join(','));
+    rows.push(['','','','','','','Total', total.toFixed(2)].map(csvEscape).join(','));
 
     // BOM for Excel UTF-8 compatibility
     const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
