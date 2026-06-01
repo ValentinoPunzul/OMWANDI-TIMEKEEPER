@@ -52,8 +52,12 @@ function getFiltered() {
         if (x.total_hours<=0 && !x.end_time) return false;
         if (!isAdmin && !isForeman && x.employee_id!==state.activeProfileId) return false;
         if (isForeman) {
-            const reports = state.employees.filter(r=>r.reports_to===state.activeProfileId).map(r=>r.id);
-            if (x.employee_id!==state.activeProfileId && !reports.includes(x.employee_id)) return false;
+            // Direct reports (Team Leaders)
+            const directIds = state.employees.filter(r => r.reports_to === state.activeProfileId).map(r => r.id);
+            // Sub-reports (Team Members who report to Team Leaders)
+            const subIds = state.employees.filter(r => directIds.includes(r.reports_to)).map(r => r.id);
+            const allTeamIds = new Set([state.activeProfileId, ...directIds, ...subIds]);
+            if (!allTeamIds.has(x.employee_id)) return false;
         }
         if (proj && x.project_id!==proj) return false;
         if (emp  && x.employee_id!==emp)  return false;

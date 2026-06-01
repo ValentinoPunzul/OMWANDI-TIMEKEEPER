@@ -18,9 +18,9 @@ window.showNotification = function(message, type='info') {
 const views = {
     dashboard:  ()=>{ renderDashboard(document.getElementById('mainContent')); startDashboardClock(); },
     timer:      ()=>renderTimerView(),
-    projects:   ()=>renderProjects(),
+    projects:   async ()=>{ if(window._refreshEntries) await window._refreshEntries(); renderProjects(); },
     team:       ()=>renderTeam(),
-    timesheets: ()=>renderTimesheets(),
+    timesheets: async ()=>{ if(window._refreshEntries) await window._refreshEntries(); renderTimesheets(); },
     settings:   ()=>renderSettings(),
 };
 
@@ -69,6 +69,16 @@ window.handleLogout = function() {
     localStorage.removeItem('chronos_user_role');
     showLogin();
 };
+
+// Refresh only time entries from server (called after timer stop)
+async function refreshEntries() {
+    try {
+        const entries = await apiRequest(`/entries?limit=${state.timeEntriesLimit}&offset=0`);
+        state.timeEntries = entries || [];
+        state.hasMoreTimeEntries = (entries?.length || 0) >= state.timeEntriesLimit;
+    } catch(e) { console.warn('Failed to refresh entries:', e.message); }
+}
+window._refreshEntries = refreshEntries;
 
 async function loadAppData() {
     const [employees, projects, entries, mapping] = await Promise.all([

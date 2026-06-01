@@ -341,6 +341,7 @@ window.foremanStopTimer = async function(entryId, empId) {
         if (idx !== -1) state.timeEntries[idx] = updated;
         clearInterval(timerInterval);
         _selectedEmpId = null;
+        if (window._refreshEntries) await window._refreshEntries();
         showNotification(`Logged ${totalHours.toFixed(2)}h for ${emp?.name || 'employee'}`, 'success');
         renderTimerView();
     } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
