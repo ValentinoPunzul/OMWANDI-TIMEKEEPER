@@ -88,8 +88,10 @@ function buildTable() {
             const pa = state.projects.find(x=>x.id===a.project_id)?.name||'';
             const pb = state.projects.find(x=>x.id===b.project_id)?.name||'';
             cmp = pa.localeCompare(pb);
-        } else if (_tsSortCol === 'task') {
-            cmp = (a.task||'').localeCompare(b.task||'');
+        } else if (_tsSortCol === 'proj_no') {
+            const pa = state.projects.find(x=>x.id===a.project_id)?.proj_no||'';
+            const pb = state.projects.find(x=>x.id===b.project_id)?.proj_no||'';
+            cmp = pa.localeCompare(pb);
         } else if (_tsSortCol === 'hours') {
             cmp = (a.total_hours||0) - (b.total_hours||0);
         }
@@ -99,8 +101,8 @@ function buildTable() {
     if (!entries.length) return '<p class="empty-state">No entries match your filters.</p>';
 
     // Build sortable headers
-    const cols = ['date','employee','project','task','description','hours'];
-    const labels = ['Date','Employee','Project','Task','Description','Hours'];
+    const cols = ['date','employee','proj_no','project','description','hours'];
+    const labels = ['Date','Employee','Project No','Project','Description','Hours'];
     const headers = cols.map((col, i) => {
         const active = _tsSortCol === col;
         const canSort = col !== 'description';
@@ -116,8 +118,8 @@ function buildTable() {
         return `<tr>
             <td>${date}</td>
             <td>${escapeHtml(emp?.name||'Unknown')}</td>
+            <td style="white-space:nowrap;font-weight:600">${escapeHtml(proj?.proj_no||'')}</td>
             <td><span class="proj-tag" style="border-color:${escapeHtml(proj?.color||'#1d4ed8')}">${escapeHtml(proj?.name||'Unknown')}</span></td>
-            <td>${escapeHtml(e.task||'')}</td>
             <td>${escapeHtml(e.description||'')}</td>
             <td class="hours-cell">${(e.total_hours||0).toFixed(2)}h</td>
             <td>${canEdit?`<button class="btn-icon" onclick="openEditEntryModal('${escapeHtml(e.id)}')">✏️</button>
