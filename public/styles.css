@@ -604,3 +604,5 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 .foreman-timer-badge.running .foreman-elapsed { font-family:monospace; font-size:.9rem; font-weight:700; color:#10b981; min-width:70px; text-align:right; }
 .foreman-selected-emp { display:flex; align-items:center; gap:.85rem; padding:.85rem 1rem; margin-bottom:1rem; }
 .btn-sm { padding:.3rem .7rem; font-size:.78rem; border-radius:6px; }
+
+.status-onhold { background:rgba(245,158,11,0.15); color:#fbbf24; border:1px solid rgba(245,158,11,0.3); }
