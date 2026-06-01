@@ -41,13 +41,9 @@ function renderForemanView(allTeamMembers = false) {
         team = state.employees.filter(e => teamIds.has(e.id));
     }
 
-    if (team.length === 0) {
-        main.innerHTML = `${renderViewHeader('Live Timer')}
-            <div class="glass-panel" style="padding:2rem;text-align:center">
-                <p class="muted">No team members found.</p>
-            </div>`;
-        return;
-    }
+    // Always include the viewer so they can time themselves
+    const meEmp = state.employees.find(e => e.id === state.activeProfileId);
+    if (meEmp) team = [meEmp, ...team.filter(e => e.id !== meEmp.id)];
 
     // If a specific employee is selected, show their timer form
     if (_selectedEmpId) {
@@ -55,19 +51,22 @@ function renderForemanView(allTeamMembers = false) {
         if (selectedEmp) { renderForemanTimerFor(main, selectedEmp); return; }
     }
 
-    // Group members by their manager (reports_to)
+    // Group members by their manager (reports_to); viewer goes in a "My Timer" group first
     const groups = {};
     team.forEach(emp => {
-        const mgrId = emp.reports_to || '_other';
-        if (!groups[mgrId]) {
-            const mgr = state.employees.find(e => e.id === mgrId);
-            groups[mgrId] = { leader: mgr || null, members: [] };
+        const key = emp.id === state.activeProfileId ? '_me' : (emp.reports_to || '_other');
+        if (!groups[key]) {
+            const mgr = key === '_me' ? null : state.employees.find(e => e.id === key);
+            groups[key] = { key, leader: mgr || null, members: [] };
         }
-        groups[mgrId].members.push(emp);
+        groups[key].members.push(emp);
     });
 
-    const sortedGroups = Object.values(groups).sort((a,b) =>
-        (a.leader?.name || 'zzz').localeCompare(b.leader?.name || 'zzz'));
+    const sortedGroups = Object.values(groups).sort((a,b) => {
+        if (a.key === '_me') return -1;
+        if (b.key === '_me') return 1;
+        return (a.leader?.name || 'zzz').localeCompare(b.leader?.name || 'zzz');
+    });
 
     let groupsHtml = '';
     for (const group of sortedGroups) {
@@ -103,7 +102,7 @@ function renderForemanView(allTeamMembers = false) {
                 </div>`;
             }).join('');
 
-        const leaderName = group.leader ? escapeHtml(group.leader.name) : 'Other';
+        const leaderName = group.key === '_me' ? 'My Timer' : (group.leader ? escapeHtml(group.leader.name) : 'Other');
         groupsHtml += `
             <div class="foreman-group">
                 <div class="foreman-group-label">${leaderName}</div>
