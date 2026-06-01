@@ -4,6 +4,15 @@ import { apiRequest } from '../api.js';
 import { escapeHtml } from '../utils.js';
 import { renderViewHeader } from './header.js';
 
+// Sort & filter state
+let _projSortCol = 'proj_no';
+let _projSortDir = 'asc';
+let _projFilterStatus = '';
+let _projFilterClient = '';
+let _projFilterVessel = '';
+let _projFilterForeman = '';
+let _projSearch = '';
+
 export async function renderProjects() {
     const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
@@ -15,7 +24,62 @@ export async function renderProjects() {
         customFields = fm._custom || [];
     } catch(e) {}
 
-    const cards = state.projects.map(p => {
+    // Apply search, filter, sort
+    let projects = [...state.projects];
+
+    if (_projSearch) {
+        const q = _projSearch.toLowerCase();
+        projects = projects.filter(p =>
+            p.name?.toLowerCase().includes(q) ||
+            p.proj_no?.toLowerCase().includes(q) ||
+            p.client?.toLowerCase().includes(q)
+        );
+    }
+    if (_projFilterStatus) projects = projects.filter(p => (p.status||'').toLowerCase() === _projFilterStatus.toLowerCase());
+    if (_projFilterClient) projects = projects.filter(p => p.client === _projFilterClient);
+    if (_projFilterVessel) projects = projects.filter(p => p.vessel_name === _projFilterVessel);
+    if (_projFilterForeman) projects = projects.filter(p => p.project_foreman === _projFilterForeman);
+
+    projects.sort((a, b) => {
+        let cmp = 0;
+        if (_projSortCol === 'proj_no')   cmp = (a.proj_no||'').localeCompare(b.proj_no||'');
+        else if (_projSortCol === 'name') cmp = (a.name||'').localeCompare(b.name||'');
+        else if (_projSortCol === 'client') cmp = (a.client||'').localeCompare(b.client||'');
+        else if (_projSortCol === 'status') cmp = (a.status_name||a.status||'').localeCompare(b.status_name||b.status||'');
+        else if (_projSortCol === 'budget') cmp = (a.budget_hours||0) - (b.budget_hours||0);
+        else if (_projSortCol === 'burned') {
+            const ba = state.timeEntries.filter(e=>e.project_id===a.id&&e.total_hours>0).reduce((s,e)=>s+e.total_hours,0);
+            const bb = state.timeEntries.filter(e=>e.project_id===b.id&&e.total_hours>0).reduce((s,e)=>s+e.total_hours,0);
+            cmp = ba - bb;
+        }
+        return _projSortDir === 'asc' ? cmp : -cmp;
+    });
+
+    // Build unique client and status lists for filters
+    const clients  = [...new Set(state.projects.map(p=>p.client).filter(Boolean))].sort();
+    const vessels  = [...new Set(state.projects.map(p=>p.vessel_name).filter(Boolean))].sort();
+    const vesselOptions = vessels.map(v=>`<option value="${escapeHtml(v)}" ${_projFilterVessel===v?'selected':''}>${escapeHtml(v)}</option>`).join('');
+    const foremans = [...new Set(state.projects.map(p=>p.project_foreman).filter(Boolean))].sort();
+    const foremanOptions = foremans.map(f=>`<option value="${escapeHtml(f)}" ${_projFilterForeman===f?'selected':''}>${escapeHtml(f)}</option>`).join('');
+    const statuses = [...new Set(state.projects.map(p=>p.status_name||p.status).filter(Boolean))].sort();
+
+    const clientOptions  = clients.map(c=>`<option value="${escapeHtml(c)}" ${_projFilterClient===c?'selected':''}>${escapeHtml(c)}</option>`).join('');
+    const statusOptions  = statuses.map(s=>{
+        const key = state.projects.find(p=>(p.status_name||p.status)===s)?.status||s;
+        return `<option value="${escapeHtml(key)}" ${_projFilterStatus===key?'selected':''}>${escapeHtml(s)}</option>`;
+    }).join('');
+
+    const sortCols = [
+        {val:'proj_no',label:'Project No'},
+        {val:'name',   label:'Name'},
+        {val:'client', label:'Client'},
+        {val:'status', label:'Status'},
+        {val:'budget', label:'Budget'},
+        {val:'burned', label:'Hours Logged'},
+    ];
+    const sortOptions = sortCols.map(c=>`<option value="${c.val}" ${_projSortCol===c.val?'selected':''}>${c.label}</option>`).join('');
+
+    const cards = projects.map(p => {
         const burned = state.timeEntries.filter(e => e.project_id === p.id && e.total_hours > 0).reduce((s,e) => s + e.total_hours, 0);
         const budget = p.budget_hours || 0;
         const pct = budget > 0 ? Math.min((burned / budget) * 100, 100) : 0;
@@ -53,8 +117,30 @@ export async function renderProjects() {
 
     main.innerHTML = `
         ${renderViewHeader('Projects')}
-        <div class="view-toolbar">${isAdmin ? `<button class="btn primary" onclick="openProjectModal()">+ New Project</button>` : ''}</div>
-        <div class="project-grid">${cards || '<p class="empty-state">No projects found.</p>'}</div>
+        <div class="projects-filter-bar glass-panel">
+            <input type="text" class="form-control" id="projSearch" placeholder="Search name, number, client..." value="${escapeHtml(_projSearch)}" oninput="applyProjectFilters()" style="flex:2;min-width:160px" />
+            <select class="form-control" id="projFilterClient" onchange="applyProjectFilters()" style="flex:1;min-width:120px">
+                <option value="">All Clients</option>${clientOptions}
+            </select>
+            <select class="form-control" id="projFilterVessel" onchange="applyProjectFilters()" style="flex:1;min-width:130px">
+                <option value="">All Vessels</option>${vesselOptions}
+            </select>
+            <select class="form-control" id="projFilterForeman" onchange="applyProjectFilters()" style="flex:1;min-width:140px">
+                <option value="">All Foremen</option>${foremanOptions}
+            </select>
+            <select class="form-control" id="projFilterStatus" onchange="applyProjectFilters()" style="flex:1;min-width:120px">
+                <option value="">All Statuses</option>${statusOptions}
+            </select>
+            <select class="form-control" id="projSortCol" onchange="applyProjectFilters()" style="min-width:130px">
+                ${sortOptions}
+            </select>
+            <button class="btn outline proj-sort-dir" id="projSortDirBtn" onclick="toggleProjectSortDir()" title="Toggle sort direction">
+                ${_projSortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
+            </button>
+            ${isAdmin ? `<button class="btn primary" onclick="openProjectModal()">+ New Project</button>` : ''}
+            ${(_projSearch||_projFilterClient||_projFilterVessel||_projFilterForeman||_projFilterStatus) ? `<button class="btn outline" onclick="clearProjectFilters()">✕ Clear</button>` : ''}
+        </div>
+        <div class="project-grid" id="projectGrid">${cards || '<p class="empty-state">No projects match your filters.</p>'}</div>
         <div id="projectModal" class="modal-overlay" style="display:none">
             <div class="modal glass-panel">
                 <h3 id="projectModalTitle">New Project</h3>
@@ -76,6 +162,26 @@ export async function renderProjects() {
             </div>
         </div>`;
 }
+
+window.applyProjectFilters = function() {
+    _projSearch       = document.getElementById('projSearch')?.value || '';
+    _projFilterClient = document.getElementById('projFilterClient')?.value || '';
+    _projFilterVessel  = document.getElementById('projFilterVessel')?.value  || '';
+    _projFilterForeman = document.getElementById('projFilterForeman')?.value || '';
+    _projFilterStatus = document.getElementById('projFilterStatus')?.value || '';
+    _projSortCol      = document.getElementById('projSortCol')?.value || 'proj_no';
+    renderProjects();
+};
+
+window.toggleProjectSortDir = function() {
+    _projSortDir = _projSortDir === 'asc' ? 'desc' : 'asc';
+    renderProjects();
+};
+
+window.clearProjectFilters = function() {
+    _projSearch = ''; _projFilterClient = ''; _projFilterVessel = ''; _projFilterForeman = ''; _projFilterStatus = '';
+    renderProjects();
+};
 
 window.openProjectModal = function(id=null) {
     document.getElementById('projectModalTitle').textContent = id ? 'Edit Project' : 'New Project';
