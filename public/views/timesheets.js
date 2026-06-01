@@ -72,6 +72,13 @@ function getFiltered() {
     });
 }
 
+function toHM(h) {
+    const totalMin = Math.round((h || 0) * 60);
+    const hh = Math.floor(totalMin / 60);
+    const mm = totalMin % 60;
+    return hh + ':' + String(mm).padStart(2, '0');
+}
+
 function buildTable() {
     const isAdmin = state.userRole==='Administrator';
     const entries = getFiltered();
@@ -124,7 +131,7 @@ function buildTable() {
             <td style="white-space:nowrap">${timeFmt(e.start_time)}</td>
             <td style="white-space:nowrap">${timeFmt(e.end_time)}</td>
             <td><span class="proj-tag" style="border-color:${escapeHtml(proj?.color||'#1d4ed8')}">${proj?.proj_no?'['+escapeHtml(proj.proj_no)+'] ':''}${escapeHtml(proj?.name||'Unknown')}</span></td>
-            <td class="hours-cell">${(e.total_hours||0).toFixed(2)}h</td>
+            <td class="hours-cell">${toHM(e.total_hours)}</td>
             <td>${canEdit?`<button class="btn-icon" onclick="openEditEntryModal('${escapeHtml(e.id)}')">✏️</button>
                 <button class="btn-icon danger" onclick="deleteEntry('${escapeHtml(e.id)}')">🗑️</button>`:''}</td>
         </tr>`;
@@ -134,7 +141,7 @@ function buildTable() {
     return `<table class="timesheet-table">
         <thead><tr>${headers}<th></th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="6" class="total-label">Total</td><td class="hours-cell">${total.toFixed(2)}h</td><td></td></tr></tfoot>
+        <tfoot><tr><td colspan="6" class="total-label">Total</td><td class="hours-cell">${toHM(total)}</td><td></td></tr></tfoot>
     </table>`;
 }
 
@@ -167,12 +174,12 @@ window.exportTimesheets = function() {
             tf(e.end_time),
             proj?.proj_no || '',
             proj?.name || 'Unknown',
-            (e.total_hours||0).toFixed(2)
+            toHM(e.total_hours)
         ].map(csvEscape).join(',');
     });
 
     const total = entries.reduce((s,e)=>s+(e.total_hours||0),0);
-    rows.push(['','','','','','','Total', total.toFixed(2)].map(csvEscape).join(','));
+    rows.push(['','','','','','','Total', toHM(total)].map(csvEscape).join(','));
 
     // BOM for Excel UTF-8 compatibility
     const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
