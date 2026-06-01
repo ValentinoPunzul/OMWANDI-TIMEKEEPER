@@ -14,6 +14,11 @@ let _projFilterVessel = '';
 let _projFilterForeman = '';
 let _projSearch = '';
 
+function toHM(h) {
+    const totalMin = Math.round((h || 0) * 60);
+    return Math.floor(totalMin / 60) + ':' + String(totalMin % 60).padStart(2, '0');
+}
+
 export async function renderProjects() {
     const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
@@ -111,11 +116,11 @@ export async function renderProjects() {
                 ? `<div class="budget-row">
                     <span class="budget-label">Budget</span>
                     <span class="open-project-badge">Open Project</span>
-                    <span class="budget-value ok" style="margin-left:auto">${burned.toFixed(1)}h logged</span>
+                    <span class="budget-value ok" style="margin-left:auto">${toHM(burned)} logged</span>
                    </div>`
                 : `<div class="budget-row">
                     <span class="budget-label">Budget</span>
-                    <span class="budget-value ${statusClass}">${burned.toFixed(1)}h / ${budget > 0 ? budget + 'h' : '—'}</span>
+                    <span class="budget-value ${statusClass}">${toHM(burned)} / ${budget > 0 ? toHM(budget) : '—'}</span>
                    </div>
                    ${budget > 0 ? `<div class="progress-bar-bg"><div class="progress-bar-fill ${statusClass}" style="width:${pct.toFixed(1)}%"></div></div>` : ''}`
             }
@@ -243,12 +248,12 @@ function buildProjectListView(projects, isAdmin, customFields) {
             <td>${proj.project_status||proj.status_name||proj.status
                 ? `<span class="status-badge ${statusClass}">${escapeHtml(proj.project_status||proj.status_name||proj.status)}</span>`
                 : '—'}</td>
-            <td class="hours-cell">${burned.toFixed(1)}h</td>
+            <td class="hours-cell">${toHM(burned)}</td>
             <td class="hours-cell">
                 ${proj.open_project
                     ? '<span class="open-project-badge">Open</span>'
                     : budget > 0
-                        ? `<span class="budget-value ${budgetClass}">${budget}h</span>`
+                        ? `<span class="budget-value ${budgetClass}">${toHM(budget)}</span>`
                         : '—'
                 }
             </td>
@@ -267,9 +272,9 @@ function buildProjectListView(projects, isAdmin, customFields) {
             <tbody>${rows}</tbody>
             <tfoot><tr>
                 <td colspan="6" class="total-label">Total logged</td>
-                <td class="hours-cell">${projects.reduce((s,proj)=>{
+                <td class="hours-cell">${toHM(projects.reduce((s,proj)=>{
                     return s + state.timeEntries.filter(e=>e.project_id===proj.id&&e.total_hours>0).reduce((t,e)=>t+e.total_hours,0);
-                },0).toFixed(1)}h</td>
+                },0))}</td>
                 <td colspan="2"></td>
             </tr></tfoot>
         </table>
