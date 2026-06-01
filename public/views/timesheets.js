@@ -12,7 +12,7 @@ export function renderTimesheets() {
     const main = document.getElementById('mainContent');
     const isAdmin = state.userRole === 'Administrator';
     const isForeman = state.userRole === 'Foreman';
-    const projectOptions = state.projects.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+    const projectOptions = [...state.projects].sort((a,b)=>(a.proj_no||'').localeCompare(b.proj_no||'')).map(p=>`<option value="${escapeHtml(p.id)}">${p.proj_no?'['+escapeHtml(p.proj_no)+'] ':''}${escapeHtml(p.name)}</option>`).join('');
     const employeeOptions = state.employees.map(e=>`<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('');
     main.innerHTML = `
         ${renderViewHeader('Timesheets')}
