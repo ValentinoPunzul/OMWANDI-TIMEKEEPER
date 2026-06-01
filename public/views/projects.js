@@ -35,7 +35,7 @@ export async function renderProjects() {
             p.client?.toLowerCase().includes(q)
         );
     }
-    if (_projFilterStatus) projects = projects.filter(p => (p.status||'').toLowerCase() === _projFilterStatus.toLowerCase());
+    if (_projFilterStatus) projects = projects.filter(p => (p.status_name||p.status||'') === _projFilterStatus);
     if (_projFilterClient) projects = projects.filter(p => p.client === _projFilterClient);
     if (_projFilterVessel) projects = projects.filter(p => p.vessel_name === _projFilterVessel);
     if (_projFilterForeman) projects = projects.filter(p => p.project_foreman === _projFilterForeman);
