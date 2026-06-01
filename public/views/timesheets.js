@@ -25,6 +25,7 @@ export function renderTimesheets() {
             <input type="date" id="tsFilterStart" class="form-control" onchange="applyTimesheetFilters()" />
             <input type="date" id="tsFilterEnd" class="form-control" onchange="applyTimesheetFilters()" />
             <button class="btn outline" onclick="clearTimesheetFilters()">Clear</button>
+            <button class="btn primary" onclick="exportTimesheets()">⤓ Export Excel</button>
         </div>
         <div id="timesheetContent" class="glass-panel table-wrapper">${buildTable()}</div>
         ${state.hasMoreTimeEntries?`<div class="load-more-row"><button class="btn outline" onclick="loadMoreEntries()">Load More</button></div>`:''}
@@ -138,6 +139,47 @@ window.sortTimesheetsBy = function(col) {
     if (_tsSortCol === col) { _tsSortDir = _tsSortDir === 'asc' ? 'desc' : 'asc'; }
     else { _tsSortCol = col; _tsSortDir = col === 'date' ? 'desc' : 'asc'; }
     document.getElementById('timesheetContent').innerHTML = buildTable();
+};
+
+window.exportTimesheets = function() {
+    const entries = getFiltered().sort((a,b)=>new Date(b.start_time)-new Date(a.start_time));
+    if (!entries.length) { showNotification('No entries to export', 'warning'); return; }
+
+    const headers = ['Date','Employee','Project No','Project','Description','Hours'];
+    const csvEscape = v => {
+        const s = String(v ?? '');
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    };
+
+    const rows = entries.map(e => {
+        const emp  = state.employees.find(x=>x.id===e.employee_id);
+        const proj = state.projects.find(x=>x.id===e.project_id);
+        const date = e.start_time ? new Date(e.start_time).toLocaleDateString() : '';
+        return [
+            date,
+            emp?.name || 'Unknown',
+            proj?.proj_no || '',
+            proj?.name || 'Unknown',
+            e.description || '',
+            (e.total_hours||0).toFixed(2)
+        ].map(csvEscape).join(',');
+    });
+
+    const total = entries.reduce((s,e)=>s+(e.total_hours||0),0);
+    rows.push(['','','','','Total', total.toFixed(2)].map(csvEscape).join(','));
+
+    // BOM for Excel UTF-8 compatibility
+    const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'timesheet-' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showNotification(`Exported ${entries.length} entries`, 'success');
 };
 
 window.applyTimesheetFilters = () => document.getElementById('timesheetContent').innerHTML = buildTable();
