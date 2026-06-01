@@ -155,6 +155,7 @@ export async function renderProjects() {
                 <div class="form-group"><label>Project Name *</label><input type="text" id="projEditName" class="form-control" /></div>
                 <div class="form-group"><label>Project Number</label><input type="text" id="projEditNumber" class="form-control" /></div>
                 <div class="form-group"><label>Client</label><input type="text" id="projEditClient" class="form-control" /></div>
+                <div class="form-group"><label>Status</label><input type="text" id="projEditStatus" class="form-control" placeholder="e.g. Busy with Work" /></div>
                 <div class="form-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="projEditOpenProject" onchange="toggleOpenProject(this)" />
@@ -232,6 +233,7 @@ window.openProjEditModal = function(id=null) {
             document.getElementById('projEditName').value = p.name || '';
             document.getElementById('projEditNumber').value = p.proj_no || '';
             document.getElementById('projEditClient').value = p.client || '';
+            document.getElementById('projEditStatus').value = p.project_status || p.status_name || p.status || '';
             document.getElementById('projEditBudget').value = p.budget_hours || '';
             const isOpen = p.open_project === true || p.open_project === 1;
             document.getElementById('projEditOpenProject').checked = isOpen;
@@ -241,7 +243,7 @@ window.openProjEditModal = function(id=null) {
             if (r) r.checked = true;
         }
     } else {
-        ['projEditName','projEditNumber','projEditClient','projEditBudget'].forEach(i => {
+        ['projEditName','projEditNumber','projEditClient','projEditStatus','projEditBudget'].forEach(i => {
             const el = document.getElementById(i); if (el) el.value = '';
         });
         const cb = document.getElementById('projEditOpenProject'); if (cb) cb.checked = false;
@@ -257,9 +259,11 @@ window.saveProjEdit = async function() {
     const name = document.getElementById('projEditName').value.trim();
     if (!name) { showNotification('Project name is required', 'warning'); return; }
     const isOpen = document.getElementById('projEditOpenProject')?.checked || false;
+    const statusVal = document.getElementById('projEditStatus')?.value?.trim();
     const payload = { name,
         proj_no: document.getElementById('projEditNumber').value.trim(),
         client: document.getElementById('projEditClient').value.trim(),
+        project_status: statusVal || '',
         budget_hours: isOpen ? 0 : (parseFloat(document.getElementById('projEditBudget').value) || 0),
         open_project: isOpen,
         color: document.querySelector('input[name="projColor"]:checked')?.value || '#1d4ed8' };
