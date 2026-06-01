@@ -9,93 +9,99 @@ let _selectedEmpId = null; // Foreman: currently selected employee
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 export function renderTimerView() {
+    const me = state.employees.find(e => e.id === state.activeProfileId);
     const isForeman = state.userRole === 'Foreman';
-    if (isForeman) {
-        renderForemanView();
+    const isTeamLeader = (me?.designation || '').toLowerCase().includes('team leader');
+    if (isForeman || isTeamLeader) {
+        // Team leaders can start timers for ALL team members; foremen for their own line
+        renderForemanView(isTeamLeader && !isForeman);
     } else {
         renderMyTimer();
     }
 }
 
 // ── FOREMAN VIEW ──────────────────────────────────────────────────────────────
-function renderForemanView() {
+function renderForemanView(allTeamMembers = false) {
     const main = document.getElementById('mainContent');
-    const me = state.employees.find(e => e.id === state.activeProfileId);
 
-    // Build team: direct reports + their direct reports
-    const directReports = state.employees.filter(e => e.reports_to === state.activeProfileId);
-    const subReports = state.employees.filter(e =>
-        directReports.some(dr => dr.id === e.reports_to)
-    );
-    const teamIds = new Set([...directReports, ...subReports].map(e => e.id));
-    const team = state.employees.filter(e => teamIds.has(e.id));
+    let team;
+    if (allTeamMembers) {
+        // Team Leader: all project floor staff across every team (exclude self, foremen, managers)
+        team = state.employees.filter(e => {
+            if (e.id === state.activeProfileId) return false;
+            const dept = (e.department || '').toLowerCase();
+            const desig = (e.designation || '').toLowerCase();
+            return dept === 'projects' && !desig.includes('foreman') && !desig.includes('manager');
+        });
+    } else {
+        // Foreman: direct reports + their direct reports
+        const directReports = state.employees.filter(e => e.reports_to === state.activeProfileId);
+        const subReports = state.employees.filter(e => directReports.some(dr => dr.id === e.reports_to));
+        const teamIds = new Set([...directReports, ...subReports].map(e => e.id));
+        team = state.employees.filter(e => teamIds.has(e.id));
+    }
 
     if (team.length === 0) {
         main.innerHTML = `${renderViewHeader('Live Timer')}
             <div class="glass-panel" style="padding:2rem;text-align:center">
-                <p class="muted">No team members found under your supervision.</p>
+                <p class="muted">No team members found.</p>
             </div>`;
         return;
     }
 
-    // Group by team leader (direct reports to foreman)
-    const groups = {};
-    directReports.forEach(leader => { groups[leader.id] = { leader, members: [] }; });
-
-    team.forEach(emp => {
-        if (directReports.find(dr => dr.id === emp.id)) return; // skip leaders themselves
-        const leader = directReports.find(dr => dr.id === emp.reports_to);
-        if (leader) groups[leader.id].members.push(emp);
-        else groups['_other'] = groups['_other'] || { leader: null, members: [] }, groups['_other'].members.push(emp);
-    });
-
     // If a specific employee is selected, show their timer form
     if (_selectedEmpId) {
         const selectedEmp = team.find(e => e.id === _selectedEmpId);
-        if (selectedEmp) {
-            renderForemanTimerFor(main, selectedEmp);
-            return;
-        }
+        if (selectedEmp) { renderForemanTimerFor(main, selectedEmp); return; }
     }
 
-    // Build the team list HTML
+    // Group members by their manager (reports_to)
+    const groups = {};
+    team.forEach(emp => {
+        const mgrId = emp.reports_to || '_other';
+        if (!groups[mgrId]) {
+            const mgr = state.employees.find(e => e.id === mgrId);
+            groups[mgrId] = { leader: mgr || null, members: [] };
+        }
+        groups[mgrId].members.push(emp);
+    });
+
+    const sortedGroups = Object.values(groups).sort((a,b) =>
+        (a.leader?.name || 'zzz').localeCompare(b.leader?.name || 'zzz'));
+
     let groupsHtml = '';
-    for (const [lid, group] of Object.entries(groups)) {
-        const allMembers = [
-            ...(group.leader ? [group.leader] : []),
-            ...group.members
-        ];
-
-        const cards = allMembers.map(emp => {
-            const active = getActiveEntryFor(emp.id);
-            const initials = (emp.name||'??').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-            const color = emp.color || '#1d4ed8';
-            const project = active ? state.projects.find(p => p.id === active.project_id) : null;
-
-            return `
-            <div class="foreman-emp-card glass-panel ${active ? 'timer-running' : ''}" onclick="selectForemanEmployee('${escapeHtml(emp.id)}')">
-                <div class="foreman-emp-left">
-                    <div class="emp-avatar" style="background:${escapeHtml(color)}">${escapeHtml(initials)}</div>
-                    <div class="foreman-emp-info">
-                        <div class="emp-name">${escapeHtml(emp.name)}</div>
-                        <div class="emp-no">${escapeHtml(emp.designation||'')}</div>
-                        ${active && project ? `<div class="foreman-active-proj">${escapeHtml(project.name)}</div>` : ''}
+    for (const group of sortedGroups) {
+        const cards = group.members
+            .sort((a,b) => (a.name||'').localeCompare(b.name||''))
+            .map(emp => {
+                const active = getActiveEntryFor(emp.id);
+                const initials = (emp.name||'??').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+                const color = emp.color || '#1d4ed8';
+                const project = active ? state.projects.find(p => p.id === active.project_id) : null;
+                return `
+                <div class="foreman-emp-card glass-panel ${active ? 'timer-running' : ''}" onclick="selectForemanEmployee('${escapeHtml(emp.id)}')">
+                    <div class="foreman-emp-left">
+                        <div class="emp-avatar" style="background:${escapeHtml(color)}">${escapeHtml(initials)}</div>
+                        <div class="foreman-emp-info">
+                            <div class="emp-name">${escapeHtml(emp.name)}</div>
+                            <div class="emp-no">${escapeHtml(emp.designation||'')}</div>
+                            ${active && project ? `<div class="foreman-active-proj">${escapeHtml(project.name)}</div>` : ''}
+                        </div>
                     </div>
-                </div>
-                <div class="foreman-emp-right">
-                    ${active
-                        ? `<div class="foreman-timer-badge running">
-                                <span class="foreman-elapsed" id="felapsed-${escapeHtml(emp.id)}">${formatElapsed(active.start_time)}</span>
-                                <button class="btn danger btn-sm" onclick="event.stopPropagation(); foremanStopTimer('${escapeHtml(active.id)}','${escapeHtml(emp.id)}')">STOP</button>
-                           </div>`
-                        : `<div class="foreman-timer-badge idle">
-                                <span class="muted" style="font-size:.75rem">Idle</span>
-                                <button class="btn primary btn-sm" onclick="event.stopPropagation(); selectForemanEmployee('${escapeHtml(emp.id)}')">START</button>
-                           </div>`
-                    }
-                </div>
-            </div>`;
-        }).join('');
+                    <div class="foreman-emp-right">
+                        ${active
+                            ? `<div class="foreman-timer-badge running">
+                                    <span class="foreman-elapsed" id="felapsed-${escapeHtml(emp.id)}">${formatElapsed(active.start_time)}</span>
+                                    <button class="btn danger btn-sm" onclick="event.stopPropagation(); foremanStopTimer('${escapeHtml(active.id)}','${escapeHtml(emp.id)}')">STOP</button>
+                               </div>`
+                            : `<div class="foreman-timer-badge idle">
+                                    <span class="muted" style="font-size:.75rem">Idle</span>
+                                    <button class="btn primary btn-sm" onclick="event.stopPropagation(); selectForemanEmployee('${escapeHtml(emp.id)}')">START</button>
+                               </div>`
+                        }
+                    </div>
+                </div>`;
+            }).join('');
 
         const leaderName = group.leader ? escapeHtml(group.leader.name) : 'Other';
         groupsHtml += `
@@ -106,12 +112,11 @@ function renderForemanView() {
     }
 
     main.innerHTML = `
-        ${renderViewHeader('Team Timers')}
+        ${renderViewHeader(allTeamMembers ? 'Team Timers — All Members' : 'Team Timers')}
         <div class="foreman-view">
             ${groupsHtml}
         </div>`;
 
-    // Start ticking all active timers
     startForemanTicking(team);
 }
 
