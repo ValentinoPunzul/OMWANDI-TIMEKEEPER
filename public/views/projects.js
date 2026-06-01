@@ -35,7 +35,7 @@ export async function renderProjects() {
             p.client?.toLowerCase().includes(q)
         );
     }
-    if (_projFilterStatus) projects = projects.filter(p => (p.status_name||p.status||'') === _projFilterStatus);
+    if (_projFilterStatus) projects = projects.filter(p => (p.project_status||p.status_name||p.status||'') === _projFilterStatus);
     if (_projFilterClient) projects = projects.filter(p => p.client === _projFilterClient);
     if (_projFilterVessel) projects = projects.filter(p => p.vessel_name === _projFilterVessel);
     if (_projFilterForeman) projects = projects.filter(p => p.project_foreman === _projFilterForeman);
@@ -45,7 +45,7 @@ export async function renderProjects() {
         if (_projSortCol === 'proj_no')   cmp = (a.proj_no||'').localeCompare(b.proj_no||'');
         else if (_projSortCol === 'name') cmp = (a.name||'').localeCompare(b.name||'');
         else if (_projSortCol === 'client') cmp = (a.client||'').localeCompare(b.client||'');
-        else if (_projSortCol === 'status') cmp = (a.status_name||a.status||'').localeCompare(b.status_name||b.status||'');
+        else if (_projSortCol === 'status') cmp = (a.project_status||a.status_name||a.status||'').localeCompare(b.project_status||b.status_name||b.status||'');
         else if (_projSortCol === 'budget') cmp = (a.budget_hours||0) - (b.budget_hours||0);
         else if (_projSortCol === 'burned') {
             const ba = state.timeEntries.filter(e=>e.project_id===a.id&&e.total_hours>0).reduce((s,e)=>s+e.total_hours,0);
@@ -190,7 +190,7 @@ window.toggleOpenProject = function(cb) {
 function populateStatusFilter() {
     const sel = document.getElementById('projFilterStatus');
     if (!sel) return;
-    const statuses = [...new Set(state.projects.map(p => p.status_name || p.status).filter(Boolean))].sort();
+    const statuses = [...new Set(state.projects.map(p => p.project_status || p.status_name || p.status).filter(Boolean))].sort();
     // Remove old options except first
     while (sel.options.length > 1) sel.remove(1);
     statuses.forEach(s => {
