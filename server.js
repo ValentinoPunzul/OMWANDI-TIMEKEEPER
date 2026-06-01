@@ -88,9 +88,15 @@ const projectSchema = z.object({
     proj_no: z.string().optional(),
     client: z.string().optional(),
     vessel_name: z.string().optional(),
-    budget_hours: z.number().positive().optional(),
+    budget_hours: z.number().min(0).optional(),
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-});
+    open_project: z.boolean().optional(),
+    status: z.string().optional(),
+    status_name: z.string().optional(),
+    project_foreman: z.string().optional(),
+    scoro_id: z.string().optional(),
+    updated_from_scoro: z.string().optional(),
+}).passthrough();
 
 
 // --- API Endpoints ---
