@@ -73,6 +73,12 @@ function getFiltered() {
     });
 }
 
+function fmtDMY(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+}
+
 function toHM(h) {
     const totalMin = Math.round((h || 0) * 60);
     const hh = Math.floor(totalMin / 60);
@@ -122,7 +128,7 @@ function buildTable() {
     const rows = entries.map(e => {
         const emp  = state.employees.find(x=>x.id===e.employee_id);
         const proj = state.projects.find(x=>x.id===e.project_id);
-        const date = e.start_time ? new Date(e.start_time).toLocaleDateString() : '—';
+        const date = e.start_time ? fmtDMY(e.start_time) : '—';
         const timeFmt = iso => iso ? new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
         const canEdit = isAdmin || e.employee_id===state.activeProfileId;
         const cls = classifyEntry(e);
@@ -170,7 +176,7 @@ window.exportTimesheets = function() {
     const rows = entries.map(e => {
         const emp  = state.employees.find(x=>x.id===e.employee_id);
         const proj = state.projects.find(x=>x.id===e.project_id);
-        const date = e.start_time ? new Date(e.start_time).toLocaleDateString() : '';
+        const date = e.start_time ? fmtDMY(e.start_time) : '';
         const tf = iso => iso ? new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
         const cls = classifyEntry(e);
         return [

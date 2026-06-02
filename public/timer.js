@@ -10,7 +10,9 @@ export function startDashboardClock() {
         if (timeEl && dateEl) {
             const now = new Date();
             timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-            dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const dow = now.toLocaleDateString(undefined, { weekday: 'long' });
+            const dmy = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
+            dateEl.textContent = dow + ', ' + dmy;
         }
     }, 1000);
 }
