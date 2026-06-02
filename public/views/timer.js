@@ -170,6 +170,11 @@ function renderForemanTimerFor(main, emp) {
                    </div>`
                 : `<div class="timer-form glass-panel">
                     <div class="form-group">
+                        <label>Search Project <span class="optional">(number or name)</span></label>
+                        <input type="text" id="timerProjectNo" class="form-control" placeholder="Type project number or name..." oninput="findProjectByNumber(this)" autocomplete="off" />
+                        <div class="proj-find-hint muted" id="timerProjectHint"></div>
+                    </div>
+                    <div class="form-group">
                         <label>Project</label>
                         <select id="timerProject" class="form-control" onchange="handleProjectChange(this)">
                             <option value="">-- Select project --</option>
@@ -231,8 +236,8 @@ function renderStartForm() {
     return `
         <div class="timer-form glass-panel">
             <div class="form-group">
-                <label>Project Number <span class="optional">(quick find)</span></label>
-                <input type="text" id="timerProjectNo" class="form-control" placeholder="Type project number..." oninput="findProjectByNumber(this)" autocomplete="off" />
+                <label>Search Project <span class="optional">(number or name)</span></label>
+                <input type="text" id="timerProjectNo" class="form-control" placeholder="Type project number or name..." oninput="findProjectByNumber(this)" autocomplete="off" />
                 <div class="proj-find-hint muted" id="timerProjectHint"></div>
             </div>
             <div class="form-group">
@@ -313,9 +318,12 @@ window.findProjectByNumber = function(input) {
     const hint = document.getElementById('timerProjectHint');
     if (!sel) return;
     if (!val) { if (hint) hint.textContent = ''; return; }
-    // Exact match first, then startsWith
+    const q = val.toLowerCase();
+    // Priority: exact number → number startsWith → name/number contains
     let match = state.projects.find(p => (p.proj_no||'') === val)
-             || state.projects.find(p => (p.proj_no||'').startsWith(val));
+             || state.projects.find(p => (p.proj_no||'').toLowerCase().startsWith(q))
+             || state.projects.find(p => (p.name||'').toLowerCase().includes(q))
+             || state.projects.find(p => (p.proj_no||'').toLowerCase().includes(q));
     if (match) {
         sel.value = match.id;
         handleProjectChange(sel);
