@@ -78,10 +78,11 @@ const employeeSchema = z.object({
   department: z.string().optional(),
   sub_department: z.string().optional(),
   reports_to: z.string().optional(),
-  access_role: z.enum(['Employee', 'Viewer', 'Editor', 'Administrator']).default('Employee'),
+  role: z.string().optional(),
+  access_role: z.string().optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   avatar: z.string().optional(),
-});
+}).passthrough();
 
 const projectSchema = z.object({
     name: z.string().min(1, 'Project name is required'),
@@ -310,6 +311,34 @@ apiRouter.put('/ref/:type/:id', async (req, res) => {
 apiRouter.delete('/ref/:type/:id', async (req, res) => {
   if (!REF_TYPES.includes(req.params.type)) return res.status(400).json({ error: 'Invalid type' });
   await db.ref('settings/ref/' + req.params.type + '/' + req.params.id).remove();
+  res.json({ success: true });
+});
+
+// --- Time Rules ---
+apiRouter.get('/settings/time-rules', async (req, res) => {
+  const snap = await db.ref('settings/time_rules').once('value');
+  res.json(snap.val() || {});
+});
+apiRouter.post('/settings/time-rules', async (req, res) => {
+  await db.ref('settings/time_rules').set(req.body);
+  res.json({ success: true });
+});
+
+// --- Public Holidays ---
+apiRouter.get('/holidays', async (req, res) => {
+  const snap = await db.ref('settings/holidays').once('value');
+  res.json(Object.values(snap.val() || {}));
+});
+apiRouter.post('/holidays', async (req, res) => {
+  const { date, name } = req.body;
+  if (!date) return res.status(400).json({ error: 'Date is required' });
+  const id = 'hol_' + Date.now();
+  const item = { id, date, name: (name || '').trim() };
+  await db.ref('settings/holidays/' + id).set(item);
+  res.status(201).json(item);
+});
+apiRouter.delete('/holidays/:id', async (req, res) => {
+  await db.ref('settings/holidays/' + req.params.id).remove();
   res.json({ success: true });
 });
 
