@@ -185,18 +185,19 @@ apiRouter.get('/entries', async (req, res) => {
     const offset = parseInt(req.query.offset, 10) || 0;
 
     const snap = await db.ref('time_entries').orderByChild('start_time').limitToLast(limit + offset).once('value');
-    const entries = Object.values(snap.val() || {});
+    // Use entries() so the Firebase key is always available as id (prevents undeletable rows)
+    const entries = Object.entries(snap.val() || {}).map(([key, e]) => ({ ...e, id: e.id || key }));
 
     // Manual slicing for offset
     const paginatedEntries = entries.reverse().slice(offset, offset + limit);
 
     const emps = (await db.ref('employees').once('value')).val() || {};
     const projs = (await db.ref('projects').once('value')).val() || {};
-    
-    const hydrated = paginatedEntries.map(e => ({ 
-        ...e, 
-        employee_name: emps[e.employee_id]?.name || 'Unknown', 
-        project_name: projs[e.project_id]?.name || 'Internal' 
+
+    const hydrated = paginatedEntries.map(e => ({
+        ...e,
+        employee_name: emps[e.employee_id]?.name || 'Unknown',
+        project_name: projs[e.project_id]?.name || 'Internal'
     }));
     
     res.json(hydrated);
