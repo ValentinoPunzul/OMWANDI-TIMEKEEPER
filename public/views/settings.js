@@ -30,7 +30,8 @@ export async function renderSettings(tab = null) {
             <button class="settings-tab ${activeTab==='dropdowns'?'active':''}" onclick="switchSettingsTab('dropdowns')">Dropdowns</button>
             <button class="settings-tab ${activeTab==='scoro'?'active':''}" onclick="switchSettingsTab('scoro')">Scoro</button>
             <button class="settings-tab ${activeTab==='webhooks'?'active':''}" onclick="switchSettingsTab('webhooks')">Webhooks</button>
-            <button class="settings-tab ${activeTab==='hr'?'active':''}" onclick="switchSettingsTab('hr')">HR Dispatch</button>
+            <button class="settings-tab ${activeTab==='timerules'?'active':''}" onclick="switchSettingsTab('timerules')">Time Rules</button>
+    <button class="settings-tab ${activeTab==='hr'?'active':''}" onclick="switchSettingsTab('hr')">HR Dispatch</button>
             ` : ''}
         </div>
         <div id="settingsTabContent" class="settings-tab-content">
@@ -175,6 +176,75 @@ async function loadSettingsTab(tab, isAdmin, me) {
                     <button class="btn outline" onclick="refreshWebhookLogs()">↻ Refresh</button>
                 </div>
                 <div id="webhookLogsArea">${renderLogs(webhookLogs)}</div>
+            </div>`;
+        return;
+    }
+
+    if (tab === 'timerules') {
+        const [rules, holidays] = await Promise.all([
+            apiRequest('/settings/time-rules').catch(()=>({})),
+            apiRequest('/holidays').catch(()=>[]),
+        ]);
+        const r = Object.assign({
+            normalStart:'07:00', normalEnd:'17:00', teaStart:'10:00', teaEnd:'10:15',
+            lunchStart:'13:00', lunchEnd:'14:00',
+            rateNormal:1, rateOvertime:1.5, rateDouble:2
+        }, rules);
+        const holRows = holidays.sort((a,b)=>a.date.localeCompare(b.date)).map(h=>`
+            <tr data-id="${escapeHtml(h.id)}">
+                <td>${escapeHtml(h.date)}</td>
+                <td>${escapeHtml(h.name||'')}</td>
+                <td><button class="btn-icon danger" onclick="deleteHoliday('${escapeHtml(h.id)}')">🗑</button></td>
+            </tr>`).join('');
+        content.innerHTML = `
+            <div class="settings-card">
+                <h3>Working Hours</h3>
+                <p class="setting-description">Normal working window for weekdays. Hours outside this are classified automatically.</p>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap">
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Normal Start</label><input type="time" id="trNormalStart" class="form-control" value="${r.normalStart}"></div>
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Normal End</label><input type="time" id="trNormalEnd" class="form-control" value="${r.normalEnd}"></div>
+                </div>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap">
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Tea Time Start</label><input type="time" id="trTeaStart" class="form-control" value="${r.teaStart}"></div>
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Tea Time End</label><input type="time" id="trTeaEnd" class="form-control" value="${r.teaEnd}"></div>
+                </div>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap">
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Lunch Start</label><input type="time" id="trLunchStart" class="form-control" value="${r.lunchStart}"></div>
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Lunch End</label><input type="time" id="trLunchEnd" class="form-control" value="${r.lunchEnd}"></div>
+                </div>
+            </div>
+            <div class="settings-card">
+                <h3>Rate Classification</h3>
+                <table class="timesheet-table">
+                    <thead><tr><th>Condition</th><th>Classification</th></tr></thead>
+                    <tbody>
+                        <tr><td>Weekday ${r.normalStart}–${r.normalEnd}</td><td><span class="rate-badge normal">Normal Time</span></td></tr>
+                        <tr><td>Tea ${r.teaStart}–${r.teaEnd}</td><td><span class="rate-badge tea">Tea Time</span></td></tr>
+                        <tr><td>Lunch ${r.lunchStart}–${r.lunchEnd}</td><td><span class="rate-badge tea">Lunch</span></td></tr>
+                        <tr><td>Weekday after ${r.normalEnd}</td><td><span class="rate-badge overtime">Overtime ×${r.rateOvertime}</span></td></tr>
+                        <tr><td>Saturday (all day)</td><td><span class="rate-badge overtime">Overtime ×${r.rateOvertime}</span></td></tr>
+                        <tr><td>Sunday (all day)</td><td><span class="rate-badge double">Double Time ×${r.rateDouble}</span></td></tr>
+                        <tr><td>Public Holiday</td><td><span class="rate-badge double">Double Time ×${r.rateDouble}</span></td></tr>
+                    </tbody>
+                </table>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem">
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Overtime Multiplier</label><input type="number" step="0.1" id="trRateOt" class="form-control" value="${r.rateOvertime}"></div>
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Double Time Multiplier</label><input type="number" step="0.1" id="trRateDt" class="form-control" value="${r.rateDouble}"></div>
+                </div>
+                <button class="btn primary" onclick="saveTimeRules()">Save Time Rules</button>
+            </div>
+            <div class="settings-card">
+                <h3>Public Holidays</h3>
+                <p class="setting-description">Days classified as Double Time. Add all public holidays for the year.</p>
+                <div class="scoro-add-row">
+                    <input type="date" id="holDate" class="form-control">
+                    <input type="text" id="holName" class="form-control" placeholder="Holiday name (e.g. Independence Day)">
+                    <button class="btn primary" onclick="addHoliday()">+ Add</button>
+                </div>
+                <table class="timesheet-table" style="margin-top:1rem">
+                    <thead><tr><th>Date</th><th>Name</th><th></th></tr></thead>
+                    <tbody id="holidaysBody">${holRows||'<tr><td colspan="3" class="empty-state">No holidays added.</td></tr>'}</tbody>
+                </table>
             </div>`;
         return;
     }
@@ -380,6 +450,53 @@ window.saveScoroMapping = async function() {
         await apiRequest('/settings/mapping',{method:'POST',body:JSON.stringify({mapping:state.scoroMapping})});
         showNotification('Scoro mapping saved','success');
     } catch(e) { showNotification('Failed: '+e.message,'error'); }
+};
+
+window.saveTimeRules = async function() {
+    const payload = {
+        normalStart: document.getElementById('trNormalStart').value,
+        normalEnd:   document.getElementById('trNormalEnd').value,
+        teaStart:    document.getElementById('trTeaStart').value,
+        teaEnd:      document.getElementById('trTeaEnd').value,
+        lunchStart:  document.getElementById('trLunchStart').value,
+        lunchEnd:    document.getElementById('trLunchEnd').value,
+        saturdayRate:'overtime', sundayRate:'double', holidayRate:'double',
+        rateNormal:1,
+        rateOvertime: parseFloat(document.getElementById('trRateOt').value) || 1.5,
+        rateDouble:   parseFloat(document.getElementById('trRateDt').value) || 2,
+    };
+    try {
+        await apiRequest('/settings/time-rules', { method:'POST', body:JSON.stringify(payload) });
+        showNotification('Time rules saved', 'success');
+        switchSettingsTab('timerules');
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
+};
+
+window.addHoliday = async function() {
+    const date = document.getElementById('holDate').value;
+    const name = document.getElementById('holName').value.trim();
+    if (!date) { showNotification('Pick a date first', 'warning'); return; }
+    try {
+        const item = await apiRequest('/holidays', { method:'POST', body:JSON.stringify({ date, name }) });
+        const tbody = document.getElementById('holidaysBody');
+        if (tbody.querySelector('.empty-state')) tbody.innerHTML = '';
+        const tr = document.createElement('tr'); tr.dataset.id = item.id;
+        tr.innerHTML = `<td>${escapeHtml(item.date)}</td><td>${escapeHtml(item.name||'')}</td>
+            <td><button class="btn-icon danger" onclick="deleteHoliday('${escapeHtml(item.id)}')">🗑</button></td>`;
+        tbody.appendChild(tr);
+        document.getElementById('holName').value = '';
+        document.getElementById('holDate').value = '';
+        showNotification('Holiday added', 'success');
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
+};
+
+window.deleteHoliday = async function(id) {
+    if (!confirm('Delete this holiday?')) return;
+    try {
+        await apiRequest(`/holidays/${id}`, { method:'DELETE' });
+        document.querySelector(`tr[data-id="${id}"]`)?.remove();
+        showNotification('Deleted', 'success');
+    } catch(e) { showNotification('Failed: ' + e.message, 'error'); }
 };
 
 window.triggerHrDispatch = async function() {
