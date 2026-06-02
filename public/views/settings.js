@@ -187,7 +187,7 @@ async function loadSettingsTab(tab, isAdmin, me) {
         ]);
         const r = Object.assign({
             normalStart:'07:00', normalEnd:'17:00', teaStart:'10:00', teaEnd:'10:15',
-            lunchStart:'13:00', lunchEnd:'14:00',
+            lunchStart:'13:00', lunchEnd:'14:00', fridayEnd:'16:00',
             afterHoursRate:'overtime', saturdayRate:'overtime', sundayRate:'double', holidayRate:'double',
             rateNormal:1, rateOvertime:1.5, rateDouble:2
         }, rules);
@@ -203,7 +203,8 @@ async function loadSettingsTab(tab, isAdmin, me) {
                 <p class="setting-description">Normal working window for weekdays. Hours outside this are classified automatically.</p>
                 <div style="display:flex;gap:1rem;flex-wrap:wrap">
                     <div class="form-group" style="flex:1;min-width:120px"><label>Normal Start</label><input type="time" id="trNormalStart" class="form-control" value="${r.normalStart}"></div>
-                    <div class="form-group" style="flex:1;min-width:120px"><label>Normal End</label><input type="time" id="trNormalEnd" class="form-control" value="${r.normalEnd}"></div>
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Mon–Thu End</label><input type="time" id="trNormalEnd" class="form-control" value="${r.normalEnd}"></div>
+                    <div class="form-group" style="flex:1;min-width:120px"><label>Friday End</label><input type="time" id="trFridayEnd" class="form-control" value="${r.fridayEnd}"></div>
                 </div>
                 <div style="display:flex;gap:1rem;flex-wrap:wrap">
                     <div class="form-group" style="flex:1;min-width:120px"><label>Tea Time Start</label><input type="time" id="trTeaStart" class="form-control" value="${r.teaStart}"></div>
@@ -219,9 +220,10 @@ async function loadSettingsTab(tab, isAdmin, me) {
                 <table class="timesheet-table">
                     <thead><tr><th>Condition</th><th>Classification</th></tr></thead>
                     <tbody>
-                        <tr><td>Weekday ${r.normalStart}–${r.normalEnd}</td><td><span class="rate-badge normal">Normal Time</span></td></tr>
+                        <tr><td>Mon–Thu ${r.normalStart}–${r.normalEnd}</td><td><span class="rate-badge normal">Normal Time</span></td></tr>
+                        <tr><td>Friday ${r.normalStart}–${r.fridayEnd} (no lunch)</td><td><span class="rate-badge normal">Normal Time</span></td></tr>
                         <tr><td>Tea ${r.teaStart}–${r.teaEnd}</td><td><span class="rate-badge tea">Tea Time</span></td></tr>
-                        <tr><td>Lunch ${r.lunchStart}–${r.lunchEnd}</td><td><span class="rate-badge tea">Lunch</span></td></tr>
+                        <tr><td>Lunch ${r.lunchStart}–${r.lunchEnd} (Mon–Thu only)</td><td><span class="rate-badge tea">Lunch</span></td></tr>
                         <tr><td>Weekday after ${r.normalEnd}</td><td><select class="form-control rate-select" id="trAfterHours">
                             <option value="normal" ${(r.afterHoursRate)==='normal'?'selected':''}>Normal Time</option>
                             <option value="overtime" ${(r.afterHoursRate)==='overtime'?'selected':''}>Overtime</option>
@@ -473,6 +475,7 @@ window.saveTimeRules = async function() {
     const payload = {
         normalStart: document.getElementById('trNormalStart').value,
         normalEnd:   document.getElementById('trNormalEnd').value,
+        fridayEnd:   document.getElementById('trFridayEnd').value,
         teaStart:    document.getElementById('trTeaStart').value,
         teaEnd:      document.getElementById('trTeaEnd').value,
         lunchStart:  document.getElementById('trLunchStart').value,

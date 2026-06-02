@@ -14,6 +14,7 @@ export function classifyEntry(entry) {
     const r = state.timeRules || {};
     const nS = toMin(r.normalStart || '07:00');
     const nE = toMin(r.normalEnd   || '17:00');
+    const friE = toMin(r.fridayEnd || '16:00');
     const teaS = toMin(r.teaStart  || '10:00'), teaE = toMin(r.teaEnd  || '10:15');
     const luS  = toMin(r.lunchStart|| '13:00'), luE  = toMin(r.lunchEnd || '14:00');
     const holidays = state.holidays || new Set();
@@ -31,10 +32,12 @@ export function classifyEntry(entry) {
         else if (dow === 0)              bucket = r.sundayRate   || 'double';
         else if (dow === 6)              bucket = r.saturdayRate || 'overtime';
         else {                                                  // weekday
+            const isFriday = dow === 5;
+            const dayEnd = isFriday ? friE : nE;
             const inTea   = mod >= teaS && mod < teaE;
-            const inLunch = mod >= luS  && mod < luE;
+            const inLunch = !isFriday && mod >= luS && mod < luE;   // no lunch on Friday
             if (inTea || inLunch)        bucket = 'brk';
-            else if (mod >= nS && mod < nE) bucket = 'normal';
+            else if (mod >= nS && mod < dayEnd) bucket = 'normal';
             else                         bucket = r.afterHoursRate || 'overtime';
         }
         res[bucket]++;
