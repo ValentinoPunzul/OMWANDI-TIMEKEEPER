@@ -13,4 +13,6 @@ export const state = {
     isOnline: navigator.onLine,
     userRole: localStorage.getItem('chronos_user_role') || 'Employee',
     scoroMapping: {},
+    timeRules: {},
+    holidays: new Set(),
   };

@@ -81,16 +81,20 @@ async function refreshEntries() {
 window._refreshEntries = refreshEntries;
 
 async function loadAppData() {
-    const [employees, projects, entries, mapping] = await Promise.all([
+    const [employees, projects, entries, mapping, timeRules, holidays] = await Promise.all([
         apiRequest('/employees'),
         apiRequest('/projects'),
         apiRequest(`/entries?limit=${state.timeEntriesLimit}&offset=0`),
         apiRequest('/settings/mapping').catch(()=>({})),
+        apiRequest('/settings/time-rules').catch(()=>({})),
+        apiRequest('/holidays').catch(()=>[]),
     ]);
     state.employees    = employees||[];
     state.projects     = projects||[];
     state.timeEntries  = entries||[];
     state.scoroMapping = mapping?.mapping||{};
+    state.timeRules    = timeRules||{};
+    state.holidays     = new Set((holidays||[]).map(h => h.date));
     state.hasMoreTimeEntries = (entries?.length||0) >= state.timeEntriesLimit;
     updateProfileCard();
 }

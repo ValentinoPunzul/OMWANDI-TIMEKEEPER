@@ -3,6 +3,7 @@ import { state } from '../state.js';
 import { apiRequest } from '../api.js';
 import { escapeHtml } from '../utils.js';
 import { renderViewHeader } from './header.js';
+import { classifyEntry } from '../timeRules.js';
 
 // Sort state
 let _tsSortCol = 'date';
@@ -109,8 +110,8 @@ function buildTable() {
     if (!entries.length) return '<p class="empty-state">No entries match your filters.</p>';
 
     // Build sortable headers
-    const cols = ['date','employee','startedby','start','end','project','hours'];
-    const labels = ['Date','Employee','Started By','Start','End','Project','Hours'];
+    const cols = ['date','employee','startedby','start','end','project','normal','overtime','double','hours'];
+    const labels = ['Date','Employee','Started By','Start','End','Project','Normal','OT','DT','Total'];
     const headers = cols.map((col, i) => {
         const active = _tsSortCol === col;
         const canSort = col !== 'description';
@@ -124,6 +125,7 @@ function buildTable() {
         const date = e.start_time ? new Date(e.start_time).toLocaleDateString() : '—';
         const timeFmt = iso => iso ? new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
         const canEdit = isAdmin || e.employee_id===state.activeProfileId;
+        const cls = classifyEntry(e);
         return `<tr>
             <td>${date}</td>
             <td>${escapeHtml(emp?.name||'Unknown')}</td>
@@ -131,6 +133,9 @@ function buildTable() {
             <td style="white-space:nowrap">${timeFmt(e.start_time)}</td>
             <td style="white-space:nowrap">${timeFmt(e.end_time)}</td>
             <td><span class="proj-tag" style="border-color:${escapeHtml(proj?.color||'#1d4ed8')}">${proj?.proj_no?'['+escapeHtml(proj.proj_no)+'] ':''}${escapeHtml(proj?.name||'Unknown')}</span></td>
+            <td class="hours-cell" style="color:#34d399">${cls.normal>0?toHM(cls.normal):'—'}</td>
+            <td class="hours-cell" style="color:#fbbf24">${cls.overtime>0?toHM(cls.overtime):'—'}</td>
+            <td class="hours-cell" style="color:#fb7185">${cls.double>0?toHM(cls.double):'—'}</td>
             <td class="hours-cell">${toHM(e.total_hours)}</td>
             <td>${canEdit?`<button class="btn-icon" onclick="openEditEntryModal('${escapeHtml(e.id)}')">✏️</button>
                 <button class="btn-icon danger" onclick="deleteEntry('${escapeHtml(e.id)}')">🗑️</button>`:''}</td>
@@ -138,6 +143,7 @@ function buildTable() {
     }).join('');
 
     const total = entries.reduce((s,e)=>s+(e.total_hours||0),0);
+    const totals = entries.reduce((acc,e)=>{ const c=classifyEntry(e); acc.normal+=c.normal; acc.overtime+=c.overtime; acc.double+=c.double; return acc; }, {normal:0,overtime:0,double:0});
     return `<table class="timesheet-table">
         <thead><tr>${headers}<th></th></tr></thead>
         <tbody>${rows}</tbody>
@@ -155,7 +161,7 @@ window.exportTimesheets = function() {
     const entries = getFiltered().sort((a,b)=>new Date(b.start_time)-new Date(a.start_time));
     if (!entries.length) { showNotification('No entries to export', 'warning'); return; }
 
-    const headers = ['Date','Employee','Started By','Start Time','End Time','Project No','Project','Hours'];
+    const headers = ['Date','Employee','Started By','Start Time','End Time','Project No','Project','Normal','OT','DT','Total'];
     const csvEscape = v => {
         const s = String(v ?? '');
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
@@ -166,6 +172,7 @@ window.exportTimesheets = function() {
         const proj = state.projects.find(x=>x.id===e.project_id);
         const date = e.start_time ? new Date(e.start_time).toLocaleDateString() : '';
         const tf = iso => iso ? new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+        const cls = classifyEntry(e);
         return [
             date,
             emp?.name || 'Unknown',
@@ -174,12 +181,16 @@ window.exportTimesheets = function() {
             tf(e.end_time),
             proj?.proj_no || '',
             proj?.name || 'Unknown',
+            toHM(cls.normal),
+            toHM(cls.overtime),
+            toHM(cls.double),
             toHM(e.total_hours)
         ].map(csvEscape).join(',');
     });
 
     const total = entries.reduce((s,e)=>s+(e.total_hours||0),0);
-    rows.push(['','','','','','','Total', toHM(total)].map(csvEscape).join(','));
+    const eTot = entries.reduce((acc,e)=>{const c=classifyEntry(e);acc.normal+=c.normal;acc.overtime+=c.overtime;acc.double+=c.double;return acc;},{normal:0,overtime:0,double:0});
+    rows.push(['','','','','','','Total', toHM(eTot.normal), toHM(eTot.overtime), toHM(eTot.double), toHM(total)].map(csvEscape).join(','));
 
     // BOM for Excel UTF-8 compatibility
     const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
