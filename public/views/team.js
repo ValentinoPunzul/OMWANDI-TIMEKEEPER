@@ -74,11 +74,14 @@ export async function renderTeam() {
     const colorSwatches = ['#1d4ed8','#7c3aed','#db2777','#e11d48','#ea580c','#ca8a04','#16a34a','#0891b2']
         .map(c => `<label class="color-swatch" style="background:${c}"><input type="radio" name="empColor" value="${c}" ${c==='#1d4ed8'?'checked':''}/></label>`).join('');
 
-    const designationOptions = _designations.map(d => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)}</option>`).join('');
-    const departmentOptions = _departments.map(d => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)}</option>`).join('');
-    const roleOptions = _roles.length
-        ? _roles.map(r => `<option value="${escapeHtml(r.name)}">${escapeHtml(r.name)}</option>`).join('')
-        : `<option value="Employee">Employee</option><option value="Foreman">Foreman</option><option value="Administrator">Administrator</option>`;
+    const uniq = arr => [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    const desigSet = uniq([..._designations.map(d=>d.name), ...state.employees.map(e=>e.designation)]);
+    const deptSet  = uniq([..._departments.map(d=>d.name),  ...state.employees.map(e=>e.department)]);
+    const baseRoles = _roles.length ? _roles.map(r=>r.name) : ['Employee','Foreman','Administrator'];
+    const roleSet  = uniq([...baseRoles, ...state.employees.map(e=>e.role)]);
+    const designationOptions = desigSet.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+    const departmentOptions  = deptSet.map(n  => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+    const roleOptions        = roleSet.map(n  => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
 
     main.innerHTML = `
         ${renderViewHeader('Team')}
@@ -140,6 +143,17 @@ window.sortTeamBy = function(col) {
     renderTeam();
 };
 
+function ensureOption(selectId, value) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    if (value && ![...sel.options].some(o => o.value === value)) {
+        const o = document.createElement('option');
+        o.value = value; o.textContent = value;
+        sel.appendChild(o);
+    }
+    sel.value = value || '';
+}
+
 window.openEmployeeModal = function(id=null) {
     document.getElementById('empModalTitle').textContent = id ? 'Edit Member' : 'Add Team Member';
     document.getElementById('empModalId').value = id || '';
@@ -149,9 +163,9 @@ window.openEmployeeModal = function(id=null) {
         if (emp) {
             document.getElementById('empModalName').value = emp.name||'';
             document.getElementById('empModalEmpNo').value = emp.emp_no||'';
-            document.getElementById('empModalDesignation').value = emp.designation||'';
-            document.getElementById('empModalDepartment').value = emp.department||'';
-            document.getElementById('empModalRole').value = emp.role||'';
+            ensureOption('empModalDesignation', emp.designation);
+            ensureOption('empModalDepartment', emp.department);
+            ensureOption('empModalRole', emp.role || 'Employee');
             document.getElementById('empModalReportsTo').value = emp.reports_to||'';
             const r = document.querySelector(`input[name="empColor"][value="${emp.color}"]`); if(r) r.checked=true;
         }
