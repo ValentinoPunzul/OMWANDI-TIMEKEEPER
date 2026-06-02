@@ -41,7 +41,13 @@ function renderForemanView(allTeamMembers = false) {
         team = state.employees.filter(e => teamIds.has(e.id));
     }
 
-    // Always include the viewer so they can time themselves
+    // Exclude other foremen and team leaders — only actual team members are selectable
+    team = team.filter(e => {
+        const d = (e.designation || '').toLowerCase();
+        return !d.includes('foreman') && !d.includes('team leader');
+    });
+
+    // Always include the viewer so they can time themselves (even if they are a foreman/team leader)
     const meEmp = state.employees.find(e => e.id === state.activeProfileId);
     if (meEmp) team = [meEmp, ...team.filter(e => e.id !== meEmp.id)];
 
