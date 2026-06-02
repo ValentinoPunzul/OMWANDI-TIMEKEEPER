@@ -27,14 +27,15 @@ export function classifyEntry(entry) {
         const isHoliday = holidays.has(ds);
 
         let bucket;
-        if (isHoliday || dow === 0)      bucket = 'double';     // Sunday / public holiday
-        else if (dow === 6)              bucket = 'overtime';   // Saturday
+        if (isHoliday)                   bucket = r.holidayRate  || 'double';
+        else if (dow === 0)              bucket = r.sundayRate   || 'double';
+        else if (dow === 6)              bucket = r.saturdayRate || 'overtime';
         else {                                                  // weekday
             const inTea   = mod >= teaS && mod < teaE;
             const inLunch = mod >= luS  && mod < luE;
             if (inTea || inLunch)        bucket = 'brk';
             else if (mod >= nS && mod < nE) bucket = 'normal';
-            else                         bucket = 'overtime';   // before start / after end
+            else                         bucket = r.afterHoursRate || 'overtime';
         }
         res[bucket]++;
         t = new Date(t.getTime() + 60000);

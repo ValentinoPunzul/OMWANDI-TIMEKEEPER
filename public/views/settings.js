@@ -188,6 +188,7 @@ async function loadSettingsTab(tab, isAdmin, me) {
         const r = Object.assign({
             normalStart:'07:00', normalEnd:'17:00', teaStart:'10:00', teaEnd:'10:15',
             lunchStart:'13:00', lunchEnd:'14:00',
+            afterHoursRate:'overtime', saturdayRate:'overtime', sundayRate:'double', holidayRate:'double',
             rateNormal:1, rateOvertime:1.5, rateDouble:2
         }, rules);
         const holRows = holidays.sort((a,b)=>a.date.localeCompare(b.date)).map(h=>`
@@ -221,10 +222,26 @@ async function loadSettingsTab(tab, isAdmin, me) {
                         <tr><td>Weekday ${r.normalStart}–${r.normalEnd}</td><td><span class="rate-badge normal">Normal Time</span></td></tr>
                         <tr><td>Tea ${r.teaStart}–${r.teaEnd}</td><td><span class="rate-badge tea">Tea Time</span></td></tr>
                         <tr><td>Lunch ${r.lunchStart}–${r.lunchEnd}</td><td><span class="rate-badge tea">Lunch</span></td></tr>
-                        <tr><td>Weekday after ${r.normalEnd}</td><td><span class="rate-badge overtime">Overtime ×${r.rateOvertime}</span></td></tr>
-                        <tr><td>Saturday (all day)</td><td><span class="rate-badge overtime">Overtime ×${r.rateOvertime}</span></td></tr>
-                        <tr><td>Sunday (all day)</td><td><span class="rate-badge double">Double Time ×${r.rateDouble}</span></td></tr>
-                        <tr><td>Public Holiday</td><td><span class="rate-badge double">Double Time ×${r.rateDouble}</span></td></tr>
+                        <tr><td>Weekday after ${r.normalEnd}</td><td><select class="form-control rate-select" id="trAfterHours">
+                            <option value="normal" ${(r.afterHoursRate)==='normal'?'selected':''}>Normal Time</option>
+                            <option value="overtime" ${(r.afterHoursRate)==='overtime'?'selected':''}>Overtime</option>
+                            <option value="double" ${(r.afterHoursRate)==='double'?'selected':''}>Double Time</option>
+                        </select></td></tr>
+                        <tr><td>Saturday (all day)</td><td><select class="form-control rate-select" id="trSaturday">
+                            <option value="normal" ${(r.saturdayRate)==='normal'?'selected':''}>Normal Time</option>
+                            <option value="overtime" ${(r.saturdayRate)==='overtime'?'selected':''}>Overtime</option>
+                            <option value="double" ${(r.saturdayRate)==='double'?'selected':''}>Double Time</option>
+                        </select></td></tr>
+                        <tr><td>Sunday (all day)</td><td><select class="form-control rate-select" id="trSunday">
+                            <option value="normal" ${(r.sundayRate)==='normal'?'selected':''}>Normal Time</option>
+                            <option value="overtime" ${(r.sundayRate)==='overtime'?'selected':''}>Overtime</option>
+                            <option value="double" ${(r.sundayRate)==='double'?'selected':''}>Double Time</option>
+                        </select></td></tr>
+                        <tr><td>Public Holiday</td><td><select class="form-control rate-select" id="trHoliday">
+                            <option value="normal" ${(r.holidayRate)==='normal'?'selected':''}>Normal Time</option>
+                            <option value="overtime" ${(r.holidayRate)==='overtime'?'selected':''}>Overtime</option>
+                            <option value="double" ${(r.holidayRate)==='double'?'selected':''}>Double Time</option>
+                        </select></td></tr>
                     </tbody>
                 </table>
                 <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem">
@@ -460,7 +477,10 @@ window.saveTimeRules = async function() {
         teaEnd:      document.getElementById('trTeaEnd').value,
         lunchStart:  document.getElementById('trLunchStart').value,
         lunchEnd:    document.getElementById('trLunchEnd').value,
-        saturdayRate:'overtime', sundayRate:'double', holidayRate:'double',
+        afterHoursRate: document.getElementById('trAfterHours').value,
+        saturdayRate:   document.getElementById('trSaturday').value,
+        sundayRate:     document.getElementById('trSunday').value,
+        holidayRate:    document.getElementById('trHoliday').value,
         rateNormal:1,
         rateOvertime: parseFloat(document.getElementById('trRateOt').value) || 1.5,
         rateDouble:   parseFloat(document.getElementById('trRateDt').value) || 2,
