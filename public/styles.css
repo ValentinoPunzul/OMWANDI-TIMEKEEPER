@@ -642,3 +642,37 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 .brand h1 span {
     font-family: 'Montserrat', sans-serif;
 }
+
+
+/* ── Mobile fit: Projects + Live Timer ───────────────────────── */
+@media (max-width: 768px) {
+    #mainContent { padding-left: 0.75rem; padding-right: 0.75rem; }
+
+    /* Projects grid → single column */
+    .project-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+
+    /* Projects filter bar → stack full-width */
+    .projects-filter-bar { flex-direction: column; align-items: stretch; padding: 0.75rem; }
+    .projects-filter-bar .form-control,
+    .projects-filter-bar .btn { width: 100%; min-width: 0; flex: none; }
+
+    /* Timesheet/generic filter bar → stack */
+    .filter-bar { flex-direction: column; align-items: stretch; }
+    .filter-bar .form-control,
+    .filter-bar .btn { width: 100%; }
+
+    /* Live timer → fit width, shrink ring */
+    .timer-container { padding: 0; width: 100%; }
+    .timer-ring-card { width: 180px; height: 180px; }
+    .timer-form, .timer-active-info, .foreman-selected-emp { width: 100%; }
+    .foreman-view { width: 100%; }
+    .foreman-emp-card { padding: 0.7rem 0.8rem; }
+
+    /* Tables scroll instead of overflow the page */
+    .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .timesheet-table { font-size: 0.8rem; }
+
+    /* Settings cards full width */
+    .settings-card, .settings-tab-content { max-width: 100%; }
+    .ref-data-grid, .settings-grid { grid-template-columns: 1fr; }
+}
