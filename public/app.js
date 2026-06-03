@@ -24,7 +24,33 @@ const views = {
     settings:   ()=>renderSettings(),
 };
 
+function isManagerUser() {
+    const me = state.employees.find(e => e.id === state.activeProfileId);
+    const desig = (me?.designation || '').toLowerCase();
+    return state.userRole === 'Administrator'
+        || state.userRole === 'Foreman'
+        || desig.includes('team leader')
+        || desig.includes('foreman');
+}
+
+function allowedViews() {
+    // Team members (regular employees) only get Live Timer + Projects
+    return isManagerUser() ? null : new Set(['timer', 'projects']);
+}
+
+function applyNavPermissions() {
+    const allowed = allowedViews();
+    if (!allowed) return; // managers: full access
+    document.querySelectorAll('[data-view]').forEach(el => {
+        el.style.display = allowed.has(el.dataset.view) ? '' : 'none';
+    });
+    const moreBtn = document.getElementById('mobileMoreBtn');
+    if (moreBtn) moreBtn.style.display = 'none';
+}
+
 window.switchView = function(viewName) {
+    const allowed = allowedViews();
+    if (allowed && !allowed.has(viewName)) viewName = 'timer'; // block restricted views
     stopTimerInterval();
     state.activeView = viewName;
     document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(el =>
@@ -115,8 +141,9 @@ function showApp()  {
     const layout = document.getElementById('appLayout');
     layout.classList.remove('hidden');
     layout.style.display='grid';
-    // Foremen go straight to timer view to see their team
-    const defaultView = state.userRole === 'Foreman' ? 'timer' : 'dashboard';
+    applyNavPermissions();
+    // Managers/admin land on dashboard; everyone else on the timer
+    const defaultView = state.userRole === 'Administrator' ? 'dashboard' : 'timer';
     switchView(defaultView);
 }
 
