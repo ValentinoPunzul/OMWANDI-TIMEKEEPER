@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chronos-flow-v5';
+const CACHE_NAME = 'omwandi-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

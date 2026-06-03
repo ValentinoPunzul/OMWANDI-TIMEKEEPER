@@ -1,11 +1,11 @@
 {
-  "short_name": "Chronos Flow",
-  "name": "Chronos Flow Timekeeping PWA",
-  "description": "Premium Full-Stack Mobile Timekeeper with Offline Synchronization",
+  "short_name": "OMWANDI Timekeeper",
+  "name": "OMWANDI Timekeeper",
+  "description": "OMWANDI Timekeeper — time tracking and project management",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#6366f1",
+  "background_color": "#0a0c14",
+  "theme_color": "#0a0c14",
   "orientation": "portrait-primary",
   "icons": [
     {
