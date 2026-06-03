@@ -1,5 +1,5 @@
 {
-  "short_name": "OMWANDI Timekeeper",
+  "short_name": "OMWANDI",
   "name": "OMWANDI Timekeeper",
   "description": "OMWANDI Timekeeper — time tracking and project management",
   "start_url": "/",
@@ -9,13 +9,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icons/logo.svg",
+      "src": "/icons/Logo.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"
     },
     {
-      "src": "/icons/logo.svg",
+      "src": "/icons/Logo.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "maskable"
