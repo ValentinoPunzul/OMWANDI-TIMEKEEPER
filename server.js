@@ -343,6 +343,28 @@ apiRouter.delete('/holidays/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+// --- Daily hours report (Normal vs NPT per employee) ---
+apiRouter.get('/reports/daily', async (req, res) => {
+  const date = req.query.date;
+  if (!date) return res.status(400).json({ error: 'date query param required (YYYY-MM-DD)' });
+  const start = date + 'T00:00:00.000Z';
+  const end = date + 'T23:59:59.999Z';
+  const snap = await db.ref('time_entries').orderByChild('start_time').startAt(start).endAt(end).once('value');
+  const entries = Object.values(snap.val() || {});
+  const emps = (await db.ref('employees').once('value')).val() || {};
+  const projs = (await db.ref('projects').once('value')).val() || {};
+  const isNpt = p => p && (String(p.proj_no||'').toUpperCase() === 'NPT' || String(p.name||'').toUpperCase().includes('NPT'));
+  const byEmp = {};
+  for (const e of entries) {
+    if (!(e.total_hours > 0)) continue;
+    const proj = projs[e.project_id];
+    const k = e.employee_id;
+    if (!byEmp[k]) byEmp[k] = { employee_id: k, employee_name: emps[k]?.name || 'Unknown', normal: 0, npt: 0 };
+    if (isNpt(proj)) byEmp[k].npt += e.total_hours; else byEmp[k].normal += e.total_hours;
+  }
+  res.json(Object.values(byEmp));
+});
+
 app.use('/api', apiRouter);
 
 // --- Unprotected Webhook Endpoint ---
