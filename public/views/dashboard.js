@@ -62,11 +62,26 @@ function renderDashContent() {
         el.innerHTML = `
             <div class="prev-day-bar">
                 <label class="muted" style="font-size:.85rem">Date</label>
-                <input type="date" id="prevDate" class="form-control" style="max-width:180px" value="${_prevDate}" max="${ymd(new Date())}" onchange="changePrevDate(this.value)" />
+                <select id="prevDate" class="form-control" style="max-width:240px" onchange="changePrevDate(this.value)">
+                    ${buildDateOptions()}
+                </select>
             </div>
             <div id="prevDayContent"><div class="glass-panel" style="padding:1.25rem"><div class="muted">Loading…</div></div></div>`;
         loadPreviousDay();
     }
+}
+
+function buildDateOptions() {
+    const opts = [];
+    for (let i = 0; i < 30; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const v = ymd(d);
+        const wd = d.toLocaleDateString(undefined, { weekday: 'short' });
+        const tag = i === 0 ? ' (Today)' : i === 1 ? ' (Yesterday)' : '';
+        opts.push(`<option value="${v}" ${v === _prevDate ? 'selected' : ''}>${wd} ${dmy(v)}${tag}</option>`);
+    }
+    return opts.join('');
 }
 
 window.setDashTab = function(tab) { _dashTab = tab; renderDashContent(); };
