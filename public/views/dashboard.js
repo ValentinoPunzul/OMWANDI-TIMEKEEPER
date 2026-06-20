@@ -62,30 +62,42 @@ function renderDashContent() {
         el.innerHTML = `
             <div class="prev-day-bar">
                 <label class="muted" style="font-size:.85rem">Date</label>
-                <select id="prevDate" class="form-control" style="max-width:240px" onchange="changePrevDate(this.value)">
-                    ${buildDateOptions()}
-                </select>
+                <div id="prevDateSelects" style="display:flex;gap:.5rem;flex-wrap:wrap">${buildDayMonthYear()}</div>
             </div>
             <div id="prevDayContent"><div class="glass-panel" style="padding:1.25rem"><div class="muted">Loading…</div></div></div>`;
         loadPreviousDay();
     }
 }
 
-function buildDateOptions() {
-    const opts = [];
-    for (let i = 0; i < 30; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const v = ymd(d);
-        const wd = d.toLocaleDateString(undefined, { weekday: 'short' });
-        const tag = i === 0 ? ' (Today)' : i === 1 ? ' (Yesterday)' : '';
-        opts.push(`<option value="${v}" ${v === _prevDate ? 'selected' : ''}>${wd} ${dmy(v)}${tag}</option>`);
-    }
-    return opts.join('');
+function buildDayMonthYear() {
+    const [y, m, d] = _prevDate.split('-').map(Number);
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const dayOpts = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+        .map(n => `<option value="${n}" ${n === d ? 'selected' : ''}>${n}</option>`).join('');
+    const monthOpts = months.map((nm, i) =>
+        `<option value="${i + 1}" ${i + 1 === m ? 'selected' : ''}>${nm}</option>`).join('');
+    const cy = new Date().getFullYear();
+    const yearOpts = [cy, cy - 1, cy - 2]
+        .map(yr => `<option value="${yr}" ${yr === y ? 'selected' : ''}>${yr}</option>`).join('');
+    return `
+        <select id="prevDay" class="form-control" style="max-width:80px" onchange="updatePrevDate()">${dayOpts}</select>
+        <select id="prevMonth" class="form-control" style="max-width:150px" onchange="updatePrevDate()">${monthOpts}</select>
+        <select id="prevYear" class="form-control" style="max-width:100px" onchange="updatePrevDate()">${yearOpts}</select>`;
 }
 
 window.setDashTab = function(tab) { _dashTab = tab; renderDashContent(); };
-window.changePrevDate = function(val) { if (val) { _prevDate = val; loadPreviousDay(); } };
+window.updatePrevDate = function() {
+    const y = +document.getElementById('prevYear').value;
+    const m = +document.getElementById('prevMonth').value;
+    let d = +document.getElementById('prevDay').value;
+    const daysInMonth = new Date(y, m, 0).getDate();
+    if (d > daysInMonth) d = daysInMonth; // clamp e.g. 31 → 28/30
+    _prevDate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const bar = document.getElementById('prevDateSelects');
+    if (bar) bar.innerHTML = buildDayMonthYear(); // refresh day list for the new month/year
+    loadPreviousDay();
+};
 
 // ── Active connections (live ticking) ─────────────────────────────────────────
 function buildActiveSection() {
