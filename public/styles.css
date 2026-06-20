@@ -685,3 +685,9 @@ details summary::-webkit-details-marker { color:#94a3b8; }
 
 /* ── Dashboard previous-day date bar ─────────────────────────── */
 .prev-day-bar { display:flex; align-items:center; gap:.6rem; margin-bottom:1rem; }
+
+/* ── Previous-day date selects: wrap on small screens ────────── */
+@media (max-width: 480px) {
+    #prevDateSelects { flex-wrap: wrap !important; }
+    #prevDay, #prevMonth, #prevYear { flex: 1 1 auto !important; }
+}
