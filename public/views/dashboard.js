@@ -62,7 +62,7 @@ function renderDashContent() {
         el.innerHTML = `
             <div class="prev-day-bar">
                 <label class="muted" style="font-size:.85rem">Date</label>
-                <div id="prevDateSelects" style="display:flex;gap:.5rem;flex-wrap:wrap">${buildDayMonthYear()}</div>
+                <div id="prevDateSelects" style="display:flex;gap:.5rem;flex-wrap:nowrap;align-items:center">${buildDayMonthYear()}</div>
             </div>
             <div id="prevDayContent"><div class="glass-panel" style="padding:1.25rem"><div class="muted">Loading…</div></div></div>`;
         loadPreviousDay();
@@ -81,9 +81,9 @@ function buildDayMonthYear() {
     const yearOpts = [cy, cy - 1, cy - 2]
         .map(yr => `<option value="${yr}" ${yr === y ? 'selected' : ''}>${yr}</option>`).join('');
     return `
-        <select id="prevDay" class="form-control" style="max-width:80px" onchange="updatePrevDate()">${dayOpts}</select>
-        <select id="prevMonth" class="form-control" style="max-width:150px" onchange="updatePrevDate()">${monthOpts}</select>
-        <select id="prevYear" class="form-control" style="max-width:100px" onchange="updatePrevDate()">${yearOpts}</select>`;
+        <select id="prevDay" class="form-control" style="width:72px;flex:0 0 auto" onchange="updatePrevDate()">${dayOpts}</select>
+        <select id="prevMonth" class="form-control" style="width:140px;flex:0 0 auto" onchange="updatePrevDate()">${monthOpts}</select>
+        <select id="prevYear" class="form-control" style="width:90px;flex:0 0 auto" onchange="updatePrevDate()">${yearOpts}</select>`;
 }
 
 window.setDashTab = function(tab) { _dashTab = tab; renderDashContent(); };
