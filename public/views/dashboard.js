@@ -117,9 +117,10 @@ function buildActiveSection() {
         const rows = timers.map(t => {
             const emp = state.employees.find(e => e.id === t.employee_id) || { name: 'Unknown', avatar: '??', color: '#888' };
             const diff = Math.floor((Date.now() - new Date(t.start_time)) / 1000);
+            const startedAt = new Date(t.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             return `<div class="timer-card glass-panel">
                 <div class="timer-avatar" style="background:${escapeHtml(emp.color)}">${escapeHtml(emp.avatar)}</div>
-                <div class="timer-user-info"><div>${escapeHtml(emp.name)}</div><div style="font-size:0.8rem; opacity:0.7;">${escapeHtml(emp.designation || '')}</div>${(() => { const sb = state.employees.find(x=>x.id===t.started_by); return (sb && t.started_by!==t.employee_id) ? `<div style="font-size:0.7rem;opacity:0.6;color:#818cf8">▶ Started by ${escapeHtml(sb.name)}</div>` : ''; })()}</div>
+                <div class="timer-user-info"><div>${escapeHtml(emp.name)}</div><div style="font-size:0.8rem; opacity:0.7;">${escapeHtml(emp.designation || '')}</div><div style="font-size:0.72rem;opacity:0.6;">Started ${escapeHtml(startedAt)}</div>${(() => { const sb = state.employees.find(x=>x.id===t.started_by); return (sb && t.started_by!==t.employee_id) ? `<div style="font-size:0.7rem;opacity:0.6;color:#818cf8">▶ Started by ${escapeHtml(sb.name)}</div>` : ''; })()}</div>
                 <div class="timer-counter" data-start="${escapeHtml(t.start_time)}" style="margin-right:15px; font-family:monospace;">${hms(diff)}</div>
                 <button class="btn-text" style="color:#ef4444; font-weight:800;" onclick="stopUserTimer('${t.id}')">STOP</button>
             </div>`;
